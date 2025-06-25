@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,11 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   TrendingUp, 
-  TrendingDown, 
   LogOut, 
   Settings, 
   RefreshCw, 
-  User,
   Plus,
   Activity,
   BarChart3,
@@ -22,11 +20,9 @@ import {
   DollarSign,
   Target,
   X,
-  Edit3,
   PieChart,
   Briefcase
 } from "lucide-react"
-import Link from "next/link"
 
 // Types for API responses
 interface Position {
@@ -140,19 +136,7 @@ export default function DashboardPage() {
     setMounted(true)
   }, [])
 
-  // Check if user is authenticated and has credentials
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      console.log('No token found, redirecting to login')
-      window.location.href = "/login"
-      return
-    }
-    console.log('User authenticated, verifying API credentials')
-    verifyApiCredentials()
-  }, [])
-
-  const verifyApiCredentials = async () => {
+  const verifyApiCredentials = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
@@ -184,13 +168,25 @@ export default function DashboardPage() {
         console.log('Could not verify credentials, assuming setup needed')
         window.location.href = "/setup"
       }
-    } catch (error) {
-      console.error('Error verifying credentials:', error)
+    } catch (_error) {
+      console.error('Error verifying credentials:', _error)
       // Continue loading dashboard as fallback
     }
-  }
+  }, [])
 
-  const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
+  // Check if user is authenticated and has credentials
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.log('No token found, redirecting to login')
+      window.location.href = "/login"
+      return
+    }
+    console.log('User authenticated, verifying API credentials')
+    verifyApiCredentials()
+  }, [verifyApiCredentials])
+
+  const apiCall = async (endpoint: string, method: string = 'GET', body?: object) => {
     const token = localStorage.getItem('token')
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
     
@@ -220,8 +216,8 @@ export default function DashboardPage() {
         loadPortfolioData()
       ])
       setLastUpdated(new Date())
-    } catch (error) {
-      console.error('Error loading data:', error)
+    } catch (_error) {
+      console.error('Error loading data:', _error)
       setError('Failed to load data')
     } finally {
       setIsLoading(false)
@@ -238,8 +234,8 @@ export default function DashboardPage() {
       // Load P&L data
       const pnlData = await apiCall('/api/portfolio/pnl')
       setPnlData(pnlData)
-    } catch (error) {
-      console.error('Error loading portfolio data:', error)
+    } catch (_error) {
+      console.error('Error loading portfolio data:', _error)
     } finally {
       setPortfolioLoading(false)
     }
@@ -251,7 +247,7 @@ export default function DashboardPage() {
       await apiCall('/api/portfolio/update-prices', 'POST')
       setSuccess('Portfolio prices updated successfully!')
       loadPortfolioData() // Reload after update
-    } catch (error) {
+    } catch (_error) {
       setError('Failed to update portfolio prices')
     } finally {
       setPortfolioLoading(false)
@@ -262,8 +258,8 @@ export default function DashboardPage() {
     try {
       const data = await apiCall('/api/trading/positions')
       setPositions(data.positions || [])
-    } catch (error) {
-      console.error('Error loading positions:', error)
+    } catch (_error) {
+      console.error('Error loading positions:', _error)
     }
   }
 
@@ -271,8 +267,8 @@ export default function DashboardPage() {
     try {
       const data = await apiCall('/api/trading/trades')
       setTrades(data.trades || [])
-    } catch (error) {
-      console.error('Error loading trades:', error)
+    } catch (_error) {
+      console.error('Error loading trades:', _error)
     }
   }
 
@@ -280,8 +276,8 @@ export default function DashboardPage() {
     try {
       const data = await apiCall('/api/trading/order-book')
       setOrders(data.orders || [])
-    } catch (error) {
-      console.error('Error loading order book:', error)
+    } catch (_error) {
+      console.error('Error loading order book:', _error)
     }
   }
 
@@ -313,8 +309,8 @@ export default function DashboardPage() {
       
       // Reload order book
       loadOrderBook()
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to place order')
+    } catch (orderError) {
+      setError(orderError instanceof Error ? orderError.message : 'Failed to place order')
     } finally {
       setIsLoading(false)
     }
@@ -325,7 +321,7 @@ export default function DashboardPage() {
       await apiCall(`/api/trading/orders/${orderId}/cancel`, 'PUT')
       setSuccess('Order cancelled successfully!')
       loadOrderBook()
-    } catch (error) {
+    } catch (_error) {
       setError('Failed to cancel order')
     }
   }
@@ -335,7 +331,7 @@ export default function DashboardPage() {
       await apiCall(`/api/trading/positions/${positionId}/square-off`, 'POST')
       setSuccess('Position squared off successfully!')
       loadPositions()
-    } catch (error) {
+    } catch (_error) {
       setError('Failed to square off position')
     }
   }
@@ -349,7 +345,7 @@ export default function DashboardPage() {
       const symbols = marketSymbols.split(',').map(s => s.trim().toUpperCase())
       const data = await apiCall('/api/market/market-data', 'POST', { symbols })
       setMarketData(data.market_data || [])
-    } catch (error) {
+    } catch (_error) {
       setError('Failed to get market data')
     } finally {
       setIsLoading(false)
@@ -364,7 +360,7 @@ export default function DashboardPage() {
     try {
       const data = await apiCall('/api/market/ltp', 'POST', { symbol: ltpSymbol.toUpperCase() })
       setSuccess(`LTP for ${ltpSymbol.toUpperCase()}: ₹${data.ltp}`)
-    } catch (error) {
+    } catch (_error) {
       setError('Failed to get LTP')
     } finally {
       setIsLoading(false)
@@ -553,7 +549,7 @@ export default function DashboardPage() {
                          </tr>
                        </thead>
                        <tbody>
-                         {portfolioSummary.holdings.map((holding, index) => (
+                         {portfolioSummary.holdings.map((holding) => (
                            <tr key={holding.isin} className="border-b hover:bg-gray-50">
                              <td className="p-3">
                                <div>
@@ -973,4 +969,4 @@ export default function DashboardPage() {
       </main>
     </div>
   )
-} 
+}
