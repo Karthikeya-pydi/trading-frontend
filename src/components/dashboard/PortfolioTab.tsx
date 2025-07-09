@@ -68,10 +68,27 @@ export function PortfolioTab({
 
   const processedHoldings = getHoldingsFromData()
 
+  // Calculate total investment value from holdings
+  const calculateTotalInvestment = () => {
+    const total = processedHoldings.reduce((total, holding) => total + holding.investedValue, 0)
+    console.log('Total Investment Calculation:', {
+      holdingsCount: processedHoldings.length,
+      totalInvestment: total,
+      holdings: processedHoldings.map(h => ({
+        instrument: h.instrument,
+        quantity: h.quantity,
+        averagePrice: h.averagePrice,
+        investedValue: h.investedValue
+      }))
+    })
+    return total
+  }
+
   // Calculate P&L percentage for display
   const calculatePnLPercent = () => {
-    if (pnlData?.total_pnl && portfolioSummary?.total_investment) {
-      return (pnlData.total_pnl / portfolioSummary.total_investment) * 100
+    const totalInvestment = calculateTotalInvestment()
+    if (pnlData?.total_pnl && totalInvestment > 0) {
+      return (pnlData.total_pnl / totalInvestment) * 100
     }
     return 0
   }
@@ -107,18 +124,34 @@ export function PortfolioTab({
 
       {/* Portfolio Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {/* Total Value */}
+        {/* Total Holdings */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Holdings</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(portfolioSummary?.total_value || holdingsSummary?.total_invested || 0)}
+              {holdingsSummary?.total_holdings || processedHoldings.length || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total market value
+              Active positions
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Investment Value */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Investment Value</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(calculateTotalInvestment())}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total invested amount
             </p>
           </CardContent>
         </Card>
@@ -151,22 +184,6 @@ export function PortfolioTab({
             </div>
             <p className="text-xs text-muted-foreground">
               Daily change
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Holdings Count */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Holdings</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {holdingsSummary?.total_holdings || processedHoldings.length || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Active positions
             </p>
           </CardContent>
         </Card>
