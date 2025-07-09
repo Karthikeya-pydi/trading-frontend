@@ -122,6 +122,15 @@ export default function DashboardPage() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   
+  // Order book filtering state
+  const [orderSearchQuery, setOrderSearchQuery] = useState("")
+  const [orderStatusFilter, setOrderStatusFilter] = useState("ALL")
+  const [orderSideFilter, setOrderSideFilter] = useState("ALL")
+  
+  // Order details modal state
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [showOrderModal, setShowOrderModal] = useState(false)
+  
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
@@ -129,6 +138,17 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Auto-refresh order book every 30 seconds
+  useEffect(() => {
+    if (!mounted) return
+    
+    const interval = setInterval(() => {
+      loadOrderBook()
+    }, 30000) // Refresh every 30 seconds
+    
+    return () => clearInterval(interval)
+  }, [mounted])
 
   const verifyApiCredentials = useCallback(async () => {
     try {
@@ -387,6 +407,34 @@ export default function DashboardPage() {
     window.location.href = "/"
   }
 
+  // Helper function to get status badge styling
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+      case 'FILLED':
+        return 'bg-green-50 text-green-700 border-green-200'
+      case 'PARTIALLY_FILLED':
+        return 'bg-blue-50 text-blue-700 border-blue-200'
+      case 'CANCELLED':
+        return 'bg-red-50 text-red-700 border-red-200'
+      case 'REJECTED':
+        return 'bg-red-50 text-red-700 border-red-200'
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200'
+    }
+  }
+
+  // Filter orders based on search query and filters
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.symbol.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                         order.order_id.toLowerCase().includes(orderSearchQuery.toLowerCase())
+    const matchesStatus = orderStatusFilter === "ALL" || order.status === orderStatusFilter
+    const matchesSide = orderSideFilter === "ALL" || order.side === orderSideFilter
+    
+    return matchesSearch && matchesStatus && matchesSide
+  })
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -493,50 +541,6 @@ export default function DashboardPage() {
                 throw new Error("Function not implemented.")
               }}
             />
-
-            {/* Trades Table (moved from Trades tab) */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-purple-600" />
-                  <span>Trade History</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {trades.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No trades found</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Symbol</th>
-                          <th className="text-left p-2">Side</th>
-                          <th className="text-left p-2">Quantity</th>
-                          <th className="text-left p-2">Price</th>
-                          <th className="text-left p-2">Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trades.map((trade) => (
-                          <tr key={trade.trade_id} className="border-b">
-                            <td className="p-2 font-medium">{trade.symbol}</td>
-                            <td className="p-2">
-                              <Badge variant={trade.side === 'BUY' ? 'default' : 'secondary'}>
-                                {trade.side}
-                              </Badge>
-                            </td>
-                            <td className="p-2">{trade.quantity}</td>
-                            <td className="p-2">₹{trade.price}</td>
-                            <td className="p-2">{new Date(trade.timestamp).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Place Order Tab */}
@@ -658,40 +662,153 @@ export default function DashboardPage() {
                   <Target className="h-5 w-5 text-orange-600" />
                   <span>Order Book</span>
                 </CardTitle>
+                <CardDescription>Manage your active and pending orders</CardDescription>
               </CardHeader>
               <CardContent>
-                {orders.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No active orders</p>
+                {/* Search and Filter Controls */}
+                <div className="mb-6 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    {/* Search */}
+                    <div className="flex-1">
+                      <Label htmlFor="order-search" className="text-sm font-medium text-gray-700 mb-2 block">
+                        Search Orders
+                      </Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          id="order-search"
+                          placeholder="Search by symbol or order ID..."
+                          value={orderSearchQuery}
+                          onChange={(e) => setOrderSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Status Filter */}
+                    <div className="w-full md:w-48">
+                      <Label htmlFor="status-filter" className="text-sm font-medium text-gray-700 mb-2 block">
+                        Status
+                      </Label>
+                      <select
+                        id="status-filter"
+                        value={orderStatusFilter}
+                        onChange={(e) => setOrderStatusFilter(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="ALL">All Status</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="FILLED">Filled</option>
+                        <option value="PARTIALLY_FILLED">Partially Filled</option>
+                        <option value="CANCELLED">Cancelled</option>
+                        <option value="REJECTED">Rejected</option>
+                      </select>
+                    </div>
+                    
+                    {/* Side Filter */}
+                    <div className="w-full md:w-32">
+                      <Label htmlFor="side-filter" className="text-sm font-medium text-gray-700 mb-2 block">
+                        Side
+                      </Label>
+                      <select
+                        id="side-filter"
+                        value={orderSideFilter}
+                        onChange={(e) => setOrderSideFilter(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="ALL">All</option>
+                        <option value="BUY">Buy</option>
+                        <option value="SELL">Sell</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* Results Count */}
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>
+                      Showing {filteredOrders.length} of {orders.length} orders
+                    </span>
+                    {(orderSearchQuery || orderStatusFilter !== "ALL" || orderSideFilter !== "ALL") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setOrderSearchQuery("")
+                          setOrderStatusFilter("ALL")
+                          setOrderSideFilter("ALL")
+                        }}
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+                    <span className="text-gray-600">Loading orders...</span>
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg font-medium">No active orders</p>
+                    <p className="text-gray-400 text-sm">Orders you place will appear here</p>
+                  </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Symbol</th>
-                          <th className="text-left p-2">Side</th>
-                          <th className="text-left p-2">Quantity</th>
-                          <th className="text-left p-2">Price</th>
-                          <th className="text-left p-2">Type</th>
-                          <th className="text-left p-2">Status</th>
-                          <th className="text-left p-2">Actions</th>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-3 font-semibold text-gray-700">Symbol</th>
+                          <th className="text-left p-3 font-semibold text-gray-700">Side</th>
+                          <th className="text-left p-3 font-semibold text-gray-700">Quantity</th>
+                          <th className="text-left p-3 font-semibold text-gray-700">Price</th>
+                          <th className="text-left p-3 font-semibold text-gray-700">Type</th>
+                          <th className="text-left p-3 font-semibold text-gray-700">Status</th>
+                          <th className="text-left p-3 font-semibold text-gray-700">Time</th>
+                          <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {orders.map((order) => (
-                          <tr key={order.order_id} className="border-b">
-                            <td className="p-2 font-medium">{order.symbol}</td>
-                            <td className="p-2">
-                              <Badge variant={order.side === 'BUY' ? 'default' : 'secondary'}>
+                        {filteredOrders.map((order, index) => (
+                          <tr key={order.order_id} className={`border-b hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                            <td className="p-3 font-medium text-gray-900 cursor-pointer hover:text-blue-600" 
+                                onClick={() => {
+                                  setSelectedOrder(order)
+                                  setShowOrderModal(true)
+                                }}>
+                              {order.symbol}
+                            </td>
+                            <td className="p-3">
+                              <Badge 
+                                variant={order.side === 'BUY' ? 'default' : 'secondary'}
+                                className={order.side === 'BUY' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}
+                              >
                                 {order.side}
                               </Badge>
                             </td>
-                            <td className="p-2">{order.quantity}</td>
-                            <td className="p-2">₹{order.price}</td>
-                            <td className="p-2">{order.order_type}</td>
-                            <td className="p-2">
-                              <Badge variant="outline">{order.status}</Badge>
+                            <td className="p-3 text-gray-700">{order.quantity}</td>
+                            <td className="p-3 text-gray-700">
+                              {order.order_type === 'MARKET' ? 'MARKET' : `₹${order.price}`}
                             </td>
-                            <td className="p-2">
+                            <td className="p-3">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {order.order_type}
+                              </Badge>
+                            </td>
+                            <td className="p-3">
+                              <Badge 
+                                variant="outline"
+                                className={getStatusBadgeClass(order.status)}
+                              >
+                                {order.status}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-sm text-gray-600">
+                              {new Date(order.created_at).toLocaleString()}
+                            </td>
+                            <td className="p-3">
                               {order.status === 'PENDING' && (
                                 <Button
                                   size="sm"
@@ -804,6 +921,91 @@ export default function DashboardPage() {
           </TabsContent>
         </Tabs>
       </main>
+      
+      {/* Order Details Modal */}
+      {showOrderModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Order Details</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowOrderModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Order ID</Label>
+                  <p className="text-sm text-gray-900 font-mono">{selectedOrder.order_id}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Symbol</Label>
+                  <p className="text-sm text-gray-900 font-medium">{selectedOrder.symbol}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Side</Label>
+                  <Badge 
+                    variant={selectedOrder.side === 'BUY' ? 'default' : 'secondary'}
+                    className={selectedOrder.side === 'BUY' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                  >
+                    {selectedOrder.side}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Quantity</Label>
+                  <p className="text-sm text-gray-900">{selectedOrder.quantity}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Price</Label>
+                  <p className="text-sm text-gray-900">
+                    {selectedOrder.order_type === 'MARKET' ? 'MARKET' : `₹${selectedOrder.price}`}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Order Type</Label>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                    {selectedOrder.order_type}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Status</Label>
+                  <Badge 
+                    variant="outline"
+                    className={getStatusBadgeClass(selectedOrder.status)}
+                  >
+                    {selectedOrder.status}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Created At</Label>
+                  <p className="text-sm text-gray-900">{new Date(selectedOrder.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+              
+              {selectedOrder.status === 'PENDING' && (
+                <div className="pt-4 border-t">
+                  <Button
+                    onClick={() => {
+                      cancelOrder(selectedOrder.order_id)
+                      setShowOrderModal(false)
+                    }}
+                    className="w-full bg-red-600 hover:bg-red-700"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Order
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
