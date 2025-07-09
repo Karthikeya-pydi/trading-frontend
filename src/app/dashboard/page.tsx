@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,84 +22,70 @@ import {
   Target,
   X,
   PieChart,
-  Briefcase
+  Briefcase,
+  Heart,
+  Search
 } from "lucide-react"
+import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
+import { TradingService } from "@/services/trading.service"
+import { PortfolioTab } from "@/components/dashboard/PortfolioTab"
 
-// Types for API responses
-interface Position {
-  symbol: string
-  quantity: number
-  avg_price: number
-  ltp: number
-  pnl: number
-  pnl_percent: number
-  position_id: string
+import { 
+  Position, 
+  Trade, 
+  Order, 
+  PortfolioSummary, 
+  PnLData, 
+  Holding, 
+  HoldingsSummary, 
+  DailyPnL, 
+  RiskMetrics 
+} from "@/types"
+
+// Market Data Types
+interface Instrument {
+  ExchangeSegment: string
+  ExchangeInstrumentID: string
+  InstrumentType?: string
+  Name: string
+  DisplayName: string
+  Symbol: string
+  ISIN: string
 }
 
-interface Trade {
-  trade_id: string
-  symbol: string
-  quantity: number
-  price: number
-  side: 'BUY' | 'SELL'
-  timestamp: string
+interface MarketQuote {
+  ExchangeInstrumentID: string
+  LastTradedPrice: string
+  Open: string
+  High: string
+  Low: string
+  Close: string
+  Volume: string
+  BidPrice: string
+  AskPrice: string
+  BidQuantity: string
+  AskQuantity: string
+  Change: string
+  ChangePercent: string
 }
 
-interface Order {
-  order_id: string
-  symbol: string
-  quantity: number
-  price: number
-  order_type: string
-  status: string
-  side: 'BUY' | 'SELL'
-  created_at: string
+interface MarketDataResponse {
+  type: string
+  result: {
+    listQuotes: MarketQuote[]
+  }
 }
 
-interface MarketData {
-  symbol: string
-  ltp: number
-  change: number
-  change_percent: number
-  volume: number
-}
-
-// Portfolio/Holdings types
-interface Holding {
-  stock_name: string
-  isin: string
-  quantity: number
-  average_price: number
-  investment_value: number
-  purchase_date: string
-  is_collateral: boolean
-  current_price?: number
-  current_value?: number
-  unrealized_pnl?: number
-  unrealized_pnl_percent?: number
-}
-
-interface PortfolioSummary {
-  total_holdings: number
-  total_investment: number
-  total_current_value: number
-  unrealized_pnl: number
-  unrealized_pnl_percent?: number
-  holdings: Holding[]
-}
-
-interface PnLData {
-  total_realized_pnl: number
-  total_unrealized_pnl: number
-  total_pnl: number
-  total_trades: number
-  winning_trades: number
-  losing_trades: number
-  win_rate: number
-  total_charges: number
+interface SearchResponse {
+  type: string
+  query: string
+  total_found: number
+  returned: number
+  results: Instrument[]
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(new Date())
   const [activeTab, setActiveTab] = useState("portfolio")
@@ -108,25 +95,32 @@ export default function DashboardPage() {
   const [positions, setPositions] = useState<Position[]>([])
   const [trades, setTrades] = useState<Trade[]>([])
   const [orders, setOrders] = useState<Order[]>([])
-  const [marketData, setMarketData] = useState<MarketData[]>([])
   
-  // Portfolio/Holdings states
+  // Portfolio states
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null)
   const [pnlData, setPnlData] = useState<PnLData | null>(null)
+  const [holdings, setHoldings] = useState<Holding[] | null>(null)
+  const [holdingsSummary, setHoldingsSummary] = useState<HoldingsSummary | null>(null)
+  const [dailyPnL, setDailyPnL] = useState<DailyPnL | null>(null)
+  const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null)
   const [portfolioLoading, setPortfolioLoading] = useState(false)
   
   // Order form state
   const [orderForm, setOrderForm] = useState({
-    symbol: "",
+    underlying_instrument: "",
     quantity: "",
     price: "",
-    order_type: "LIMIT",
-    side: "BUY"
+    order_type: "MARKET",
+    option_type: "CE",
+    strike_price: "",
+    expiry_date: ""
   })
   
-  // Market data form state
-  const [marketSymbols, setMarketSymbols] = useState("")
-  const [ltpSymbol, setLtpSymbol] = useState("")
+  // Market data form state  
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<Instrument[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -139,9 +133,8 @@ export default function DashboardPage() {
   const verifyApiCredentials = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
       
-      const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.USER_PROFILE}`, {
         method: "GET",
         headers: { 
           "Authorization": `Bearer ${token}`,
@@ -152,57 +145,49 @@ export default function DashboardPage() {
       if (response.ok) {
         const user = await response.json()
         
-        // Check if user has either market or interactive credentials
-        const hasCredentials = user.has_iifl_market_credentials || user.has_iifl_interactive_credentials
-        
-        if (!hasCredentials) {
-          console.log('No API credentials found, redirecting to setup')
-          window.location.href = "/setup"
-          return
+        if (user.has_iifl_market_credentials || user.has_iifl_interactive_credentials) {
+          setSuccess('API credentials verified successfully!')
+          loadAllData()
+        } else {
+          setError('IIFL API credentials not found. Please configure your API keys.')
         }
-        console.log('API credentials verified, loading dashboard')
-        
-        // Load initial data
-        loadAllData()
       } else {
-        console.log('Could not verify credentials, assuming setup needed')
-        window.location.href = "/setup"
+        throw new Error('Failed to verify credentials')
       }
-    } catch (_error) {
-      console.error('Error verifying credentials:', _error)
-      // Continue loading dashboard as fallback
+    } catch (credError) {
+      console.error('Error verifying credentials:', credError)
+      setError('Failed to verify API credentials')
     }
   }, [])
 
-  // Check if user is authenticated and has credentials
+  // Load credentials and initial data on mount
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      console.log('No token found, redirecting to login')
-      window.location.href = "/login"
-      return
+    if (mounted) {
+      const token = localStorage.getItem('token')
+      if (token) {
+        verifyApiCredentials()
+      } else {
+        window.location.href = "/login"
+      }
     }
-    console.log('User authenticated, verifying API credentials')
-    verifyApiCredentials()
-  }, [verifyApiCredentials])
+  }, [mounted, verifyApiCredentials])
 
   const apiCall = async (endpoint: string, method: string = 'GET', body?: object) => {
     const token = localStorage.getItem('token')
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method,
-      headers: { 
+      headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       },
       body: body ? JSON.stringify(body) : undefined
     })
-    
+
     if (!response.ok) {
-      throw new Error(`API call failed: ${response.statusText}`)
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || response.statusText)
     }
-    
+
     return response.json()
   }
 
@@ -227,13 +212,28 @@ export default function DashboardPage() {
   const loadPortfolioData = async () => {
     setPortfolioLoading(true)
     try {
-      // Load portfolio summary (holdings)
-      const holdingsData = await apiCall('/api/portfolio/holdings-summary')
-      setPortfolioSummary(holdingsData.summary)
+      const [
+        portfolioData,
+        pnlData,
+        holdingsData,
+        holdingsSummaryData,
+        dailyPnLData,
+        riskMetricsData
+      ] = await Promise.all([
+        TradingService.getPortfolioSummary().catch(() => null),
+        TradingService.getPnLData().catch(() => null),
+        TradingService.getHoldings().catch(() => []),
+        TradingService.getHoldingsSummary().catch(() => null),
+        TradingService.getDailyPnL().catch(() => null),
+        TradingService.getRiskMetrics().catch(() => null)
+      ])
       
-      // Load P&L data
-      const pnlData = await apiCall('/api/portfolio/pnl')
+      setPortfolioSummary(portfolioData)
       setPnlData(pnlData)
+      setHoldings(holdingsData)
+      setHoldingsSummary(holdingsSummaryData)
+      setDailyPnL(dailyPnLData)
+      setRiskMetrics(riskMetricsData)
     } catch (_error) {
       console.error('Error loading portfolio data:', _error)
     } finally {
@@ -244,9 +244,9 @@ export default function DashboardPage() {
   const updatePortfolioPrices = async () => {
     setPortfolioLoading(true)
     try {
-      await apiCall('/api/portfolio/update-prices', 'POST')
+      await TradingService.updatePortfolioPrices()
       setSuccess('Portfolio prices updated successfully!')
-      loadPortfolioData() // Reload after update
+      loadPortfolioData()
     } catch (_error) {
       setError('Failed to update portfolio prices')
     } finally {
@@ -256,8 +256,9 @@ export default function DashboardPage() {
 
   const loadPositions = async () => {
     try {
-      const data = await apiCall('/api/trading/positions')
-      setPositions(data.positions || [])
+      const data = await apiCall(API_ENDPOINTS.POSITIONS)
+      // Handle both array response and object with positions property
+      setPositions(Array.isArray(data) ? data : (data.positions || []))
     } catch (_error) {
       console.error('Error loading positions:', _error)
     }
@@ -265,8 +266,8 @@ export default function DashboardPage() {
 
   const loadTrades = async () => {
     try {
-      const data = await apiCall('/api/trading/trades')
-      setTrades(data.trades || [])
+      const data = await apiCall(API_ENDPOINTS.TRADES)
+      setTrades(Array.isArray(data) ? data : (data.trades || []))
     } catch (_error) {
       console.error('Error loading trades:', _error)
     }
@@ -274,8 +275,8 @@ export default function DashboardPage() {
 
   const loadOrderBook = async () => {
     try {
-      const data = await apiCall('/api/trading/order-book')
-      setOrders(data.orders || [])
+      const data = await apiCall(API_ENDPOINTS.ORDER_BOOK)
+      setOrders(Array.isArray(data) ? data : (data.orders || []))
     } catch (_error) {
       console.error('Error loading order book:', _error)
     }
@@ -289,22 +290,26 @@ export default function DashboardPage() {
 
     try {
       const orderData = {
-        symbol: orderForm.symbol.toUpperCase(),
-        quantity: parseInt(orderForm.quantity),
-        price: parseFloat(orderForm.price),
+        underlying_instrument: orderForm.underlying_instrument.toUpperCase(),
+        option_type: orderForm.option_type,
+        strike_price: parseFloat(orderForm.strike_price),
+        expiry_date: orderForm.expiry_date,
         order_type: orderForm.order_type,
-        side: orderForm.side
+        quantity: parseInt(orderForm.quantity),
+        price: parseFloat(orderForm.price)
       }
 
-      await apiCall('/api/trading/place-order', 'POST', orderData)
+      await apiCall(API_ENDPOINTS.PLACE_ORDER, 'POST', orderData)
       
       setSuccess('Order placed successfully!')
       setOrderForm({
-        symbol: "",
+        underlying_instrument: "",
         quantity: "",
         price: "",
-        order_type: "LIMIT",
-        side: "BUY"
+        order_type: "MARKET", 
+        option_type: "CE",
+        strike_price: "",
+        expiry_date: ""
       })
       
       // Reload order book
@@ -318,7 +323,7 @@ export default function DashboardPage() {
 
   const cancelOrder = async (orderId: string) => {
     try {
-      await apiCall(`/api/trading/orders/${orderId}/cancel`, 'PUT')
+      await apiCall(`${API_ENDPOINTS.CANCEL_ORDER}/${orderId}/cancel`, 'PUT')
       setSuccess('Order cancelled successfully!')
       loadOrderBook()
     } catch (_error) {
@@ -328,7 +333,7 @@ export default function DashboardPage() {
 
   const squareOffPosition = async (positionId: string) => {
     try {
-      await apiCall(`/api/trading/positions/${positionId}/square-off`, 'POST')
+      await apiCall(`${API_ENDPOINTS.SQUARE_OFF}/${positionId}/square-off`, 'POST')
       setSuccess('Position squared off successfully!')
       loadPositions()
     } catch (_error) {
@@ -336,35 +341,44 @@ export default function DashboardPage() {
     }
   }
 
-  const getMarketData = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
+  // Market Data Functions
+  const searchInstruments = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      setShowDropdown(false)
+      return
+    }
+    
+    setIsSearching(true)
     try {
-      const symbols = marketSymbols.split(',').map(s => s.trim().toUpperCase())
-      const data = await apiCall('/api/market/market-data', 'POST', { symbols })
-      setMarketData(data.market_data || [])
+      const response: SearchResponse = await apiCall(
+        `${API_ENDPOINTS.MARKET_SEARCH_INSTRUMENTS}?q=${encodeURIComponent(query)}&limit=10`
+      )
+      setSearchResults(response.results || [])
+      setShowDropdown(true)
     } catch (_error) {
-      setError('Failed to get market data')
+      setError('Failed to search instruments')
+      setSearchResults([])
+      setShowDropdown(false)
     } finally {
-      setIsLoading(false)
+      setIsSearching(false)
     }
   }
 
-  const getLTP = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
-    try {
-      const data = await apiCall('/api/market/ltp', 'POST', { symbol: ltpSymbol.toUpperCase() })
-      setSuccess(`LTP for ${ltpSymbol.toUpperCase()}: ₹${data.ltp}`)
-    } catch (_error) {
-      setError('Failed to get LTP')
-    } finally {
-      setIsLoading(false)
+  const handleSearchInputChange = (value: string) => {
+    setSearchQuery(value)
+    if (value.trim()) {
+      searchInstruments(value)
+    } else {
+      setSearchResults([])
+      setShowDropdown(false)
     }
+  }
+
+  const viewInstrumentDetails = (instrument: Instrument) => {
+    router.push(`/market/${instrument.ExchangeInstrumentID}`)
+    setSearchQuery("")
+    setShowDropdown(false)
   }
 
   const handleLogout = () => {
@@ -398,6 +412,15 @@ export default function DashboardPage() {
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
                 Refresh
+              </Button>
+              <Button 
+                onClick={() => router.push('/wishlist')}
+                variant="outline" 
+                size="sm" 
+                className="bg-white text-red-600 border-red-300 hover:bg-red-50"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Wishlist
               </Button>
               <Button variant="outline" size="sm" className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
                 <Settings className="h-4 w-4 mr-2" />
@@ -445,344 +468,33 @@ export default function DashboardPage() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="place-order">Place Order</TabsTrigger>
-            <TabsTrigger value="positions">Positions</TabsTrigger>
-            <TabsTrigger value="trades">Trades</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="market">Market Data</TabsTrigger>
           </TabsList>
 
-
-
-          {/* Portfolio Tab - NEW */}
+          {/* Portfolio Tab */}
           <TabsContent value="portfolio" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Portfolio & Holdings</h2>
-              <Button
-                onClick={updatePortfolioPrices}
-                disabled={portfolioLoading}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${portfolioLoading ? "animate-spin" : ""}`} />
-                Update Prices
-              </Button>
-            </div>
+            <PortfolioTab
+              portfolioSummary={portfolioSummary}
+              pnlData={pnlData}
+              holdings={holdings}
+              holdingsSummary={holdingsSummary}
+              dailyPnL={dailyPnL}
+              riskMetrics={riskMetrics}
+              loading={portfolioLoading}
+              onRefresh={loadPortfolioData}
+              onUpdatePrices={updatePortfolioPrices}
+              positions={[]}
+              trades={trades}
+              onSquareOffPosition={function (positionId: string): void {
+                throw new Error("Function not implemented.")
+              }}
+            />
 
-            {/* Portfolio Summary Cards */}
-            <div className="grid md:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Holdings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{portfolioSummary?.total_holdings || 0}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Investment Value</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">
-                    ₹{portfolioSummary?.total_investment.toLocaleString() || '0'}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Unrealized P&L</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${(portfolioSummary?.unrealized_pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ₹{portfolioSummary?.unrealized_pnl.toLocaleString() || '0'}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Trades</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{pnlData?.total_trades || 0}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {pnlData?.winning_trades || 0} wins, {pnlData?.losing_trades || 0} losses
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Holdings Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Briefcase className="h-5 w-5 text-blue-600" />
-                  <span>Your Holdings</span>
-                </CardTitle>
-                <CardDescription>Long-term equity holdings from IIFL</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {!portfolioSummary || portfolioSummary.holdings.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No holdings found</p>
-                    <p className="text-sm text-gray-400">Your IIFL equity holdings will appear here</p>
-                  </div>
-                ) : (
-                                     <div className="overflow-x-auto">
-                     <table className="w-full">
-                       <thead>
-                         <tr className="border-b">
-                           <th className="text-left p-3">Stock Name</th>
-                           <th className="text-left p-3">Quantity</th>
-                           <th className="text-left p-3">Avg Price</th>
-                           <th className="text-left p-3">Current Price</th>
-                           <th className="text-left p-3">Investment</th>
-                           <th className="text-left p-3">Current Value</th>
-                           <th className="text-left p-3">P&L</th>
-                           <th className="text-left p-3">Type</th>
-                         </tr>
-                       </thead>
-                       <tbody>
-                         {portfolioSummary.holdings.map((holding) => (
-                           <tr key={holding.isin} className="border-b hover:bg-gray-50">
-                             <td className="p-3">
-                               <div>
-                                 <div className="font-medium">{holding.stock_name}</div>
-                                 <div className="text-sm text-gray-500">{holding.isin}</div>
-                               </div>
-                             </td>
-                             <td className="p-3 font-medium">{holding.quantity}</td>
-                             <td className="p-3">₹{holding.average_price.toFixed(2)}</td>
-                             <td className="p-3 font-medium">
-                               ₹{holding.current_price?.toFixed(2) || holding.average_price.toFixed(2)}
-                             </td>
-                             <td className="p-3">₹{holding.investment_value.toLocaleString()}</td>
-                             <td className="p-3 font-medium">
-                               ₹{holding.current_value?.toLocaleString() || holding.investment_value.toLocaleString()}
-                             </td>
-                             <td className="p-3">
-                               <div className={`font-medium ${(holding.unrealized_pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                 ₹{holding.unrealized_pnl?.toFixed(2) || '0.00'}
-                               </div>
-                               <div className={`text-sm ${(holding.unrealized_pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                 ({holding.unrealized_pnl_percent?.toFixed(2) || '0.00'}%)
-                               </div>
-                             </td>
-                             <td className="p-3">
-                               <Badge variant={holding.is_collateral ? "secondary" : "outline"}>
-                                 {holding.is_collateral ? "Collateral" : "Regular"}
-                               </Badge>
-                             </td>
-                           </tr>
-                         ))}
-                       </tbody>
-                     </table>
-                   </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* P&L Summary */}
-            {pnlData && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <PieChart className="h-5 w-5 text-green-600" />
-                    <span>P&L Summary</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <span>Realized P&L:</span>
-                        <span className={`font-medium ${pnlData.total_realized_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ₹{pnlData.total_realized_pnl.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Unrealized P&L:</span>
-                        <span className={`font-medium ${pnlData.total_unrealized_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ₹{pnlData.total_unrealized_pnl.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="font-medium">Total P&L:</span>
-                        <span className={`font-bold ${pnlData.total_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ₹{pnlData.total_pnl.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <span>Total Trades:</span>
-                        <span className="font-medium">{pnlData.total_trades}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Winning Trades:</span>
-                        <span className="font-medium text-green-600">{pnlData.winning_trades}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Win Rate:</span>
-                        <span className="font-medium">{pnlData.win_rate.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Place Order Tab */}
-          <TabsContent value="place-order" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Plus className="h-5 w-5 text-blue-600" />
-                  <span>Place New Order</span>
-                </CardTitle>
-                <CardDescription>Enter order details to place a trade</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={placeOrder} className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="symbol">Symbol *</Label>
-                      <Input
-                        id="symbol"
-                        placeholder="e.g., RELIANCE, TCS"
-                        value={orderForm.symbol}
-                        onChange={(e) => setOrderForm(prev => ({ ...prev, symbol: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="quantity">Quantity *</Label>
-                      <Input
-                        id="quantity"
-                        type="number"
-                        placeholder="Number of shares"
-                        value={orderForm.quantity}
-                        onChange={(e) => setOrderForm(prev => ({ ...prev, quantity: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="price">Price *</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        placeholder="Price per share"
-                        value={orderForm.price}
-                        onChange={(e) => setOrderForm(prev => ({ ...prev, price: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="order_type">Order Type</Label>
-                      <select
-                        id="order_type"
-                        className="w-full p-2 border rounded-md"
-                        value={orderForm.order_type}
-                        onChange={(e) => setOrderForm(prev => ({ ...prev, order_type: e.target.value }))}
-                      >
-                        <option value="LIMIT">LIMIT</option>
-                        <option value="MARKET">MARKET</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="side">Side</Label>
-                      <select
-                        id="side"
-                        className="w-full p-2 border rounded-md"
-                        value={orderForm.side}
-                        onChange={(e) => setOrderForm(prev => ({ ...prev, side: e.target.value }))}
-                      >
-                        <option value="BUY">BUY</option>
-                        <option value="SELL">SELL</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    disabled={isLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                  >
-                    {isLoading ? "Placing Order..." : "Place Order"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Positions Tab */}
-          <TabsContent value="positions" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Activity className="h-5 w-5 text-green-600" />
-                  <span>Current Positions</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {positions.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No positions found</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Symbol</th>
-                          <th className="text-left p-2">Quantity</th>
-                          <th className="text-left p-2">Avg Price</th>
-                          <th className="text-left p-2">LTP</th>
-                          <th className="text-left p-2">P&L</th>
-                          <th className="text-left p-2">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {positions.map((position) => (
-                          <tr key={position.position_id} className="border-b">
-                            <td className="p-2 font-medium">{position.symbol}</td>
-                            <td className="p-2">{position.quantity}</td>
-                            <td className="p-2">₹{position.avg_price}</td>
-                            <td className="p-2">₹{position.ltp}</td>
-                            <td className={`p-2 ${position.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ₹{position.pnl} ({position.pnl_percent}%)
-                            </td>
-                            <td className="p-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => squareOffPosition(position.position_id)}
-                                className="text-red-600 border-red-300 hover:bg-red-50"
-                              >
-                                Square Off
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Trades Tab */}
-          <TabsContent value="trades" className="space-y-6">
+            {/* Trades Table (moved from Trades tab) */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -823,6 +535,117 @@ export default function DashboardPage() {
                     </table>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Place Order Tab */}
+          <TabsContent value="place-order" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Plus className="h-5 w-5 text-blue-600" />
+                  <span>Place New Order</span>
+                </CardTitle>
+                <CardDescription>Enter order details for options trading</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={placeOrder} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="underlying_instrument">Underlying Instrument *</Label>
+                      <Input
+                        id="underlying_instrument"
+                        placeholder="e.g., NIFTY, BANKNIFTY"
+                        value={orderForm.underlying_instrument}
+                        onChange={(e) => setOrderForm(prev => ({ ...prev, underlying_instrument: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="option_type">Option Type</Label>
+                      <select
+                        id="option_type"
+                        className="w-full p-2 border rounded-md"
+                        value={orderForm.option_type}
+                        onChange={(e) => setOrderForm(prev => ({ ...prev, option_type: e.target.value }))}
+                      >
+                        <option value="CE">Call (CE)</option>
+                        <option value="PE">Put (PE)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="strike_price">Strike Price *</Label>
+                      <Input
+                        id="strike_price"
+                        type="number"
+                        placeholder="e.g., 18000"
+                        value={orderForm.strike_price}
+                        onChange={(e) => setOrderForm(prev => ({ ...prev, strike_price: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="expiry_date">Expiry Date *</Label>
+                      <Input
+                        id="expiry_date"
+                        type="date"
+                        value={orderForm.expiry_date}
+                        onChange={(e) => setOrderForm(prev => ({ ...prev, expiry_date: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="quantity">Quantity *</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        placeholder="e.g., 50"
+                        value={orderForm.quantity}
+                        onChange={(e) => setOrderForm(prev => ({ ...prev, quantity: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="order_type">Order Type</Label>
+                      <select
+                        id="order_type"
+                        className="w-full p-2 border rounded-md"
+                        value={orderForm.order_type}
+                        onChange={(e) => setOrderForm(prev => ({ ...prev, order_type: e.target.value }))}
+                      >
+                        <option value="MARKET">MARKET</option>
+                        <option value="LIMIT">LIMIT</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        placeholder="Price per unit"
+                        value={orderForm.price}
+                        onChange={(e) => setOrderForm(prev => ({ ...prev, price: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    disabled={isLoading}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isLoading ? "Placing Order..." : "Place Order"}
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </TabsContent>
@@ -869,7 +692,7 @@ export default function DashboardPage() {
                               <Badge variant="outline">{order.status}</Badge>
                             </td>
                             <td className="p-2">
-                              <div className="flex space-x-2">
+                              {order.status === 'PENDING' && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -879,7 +702,7 @@ export default function DashboardPage() {
                                   <X className="h-3 w-3 mr-1" />
                                   Cancel
                                 </Button>
-                              </div>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -894,73 +717,87 @@ export default function DashboardPage() {
           {/* Market Data Tab */}
           <TabsContent value="market" className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Market Data */}
+              {/* Instrument Search */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <BarChart3 className="h-5 w-5 text-blue-600" />
-                    <span>Market Data</span>
+                    <Search className="h-5 w-5 text-blue-600" />
+                    <span>Search Instruments</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={getMarketData} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="symbols">Symbols (comma-separated)</Label>
+                  <div className="space-y-4">
+                    <div className="relative">
                       <Input
-                        id="symbols"
-                        placeholder="e.g., RELIANCE, TCS, INFY"
-                        value={marketSymbols}
-                        onChange={(e) => setMarketSymbols(e.target.value)}
-                        required
+                        placeholder="Search for stocks/instruments to view details..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearchInputChange(e.target.value)}
+                        onFocus={() => searchQuery.trim() && setShowDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                       />
+                      {isSearching && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <RefreshCw className="h-4 w-4 animate-spin text-gray-400" />
+                        </div>
+                      )}
                     </div>
-                    <Button type="submit" disabled={isLoading}>
-                      Get Market Data
-                    </Button>
-                  </form>
-
-                  {marketData.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {marketData.map((data) => (
-                        <div key={data.symbol} className="flex justify-between items-center p-2 border rounded">
-                          <span className="font-medium">{data.symbol}</span>
-                          <div className="text-right">
-                            <div>₹{data.ltp}</div>
-                            <div className={`text-sm ${data.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {data.change >= 0 ? '+' : ''}{data.change} ({data.change_percent}%)
+                    
+                    {/* Dropdown Results */}
+                    {showDropdown && searchResults.length > 0 && (
+                      <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {searchResults.map((instrument) => (
+                          <div 
+                            key={instrument.ExchangeInstrumentID} 
+                            className="flex justify-between items-center p-3 border-b hover:bg-gray-50 cursor-pointer"
+                            onClick={() => viewInstrumentDetails(instrument)}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{instrument.DisplayName || instrument.Name}</div>
+                              <div className="text-sm text-gray-500">
+                                {instrument.ExchangeSegment} • {instrument.Symbol}
+                                {instrument.ISIN && ` • ISIN: ${instrument.ISIN}`}
+                              </div>
+                              <div className="text-xs text-gray-400">ID: {instrument.ExchangeInstrumentID}</div>
+                            </div>
+                            <div className="ml-2">
+                              <Search className="h-4 w-4 text-blue-600" />
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* No results message */}
+                    {showDropdown && searchQuery.trim() && !isSearching && searchResults.length === 0 && (
+                      <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg p-3">
+                        <p className="text-gray-500 text-center">No instruments found</p>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* LTP */}
+              {/* Quick Actions */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                    <span>Last Traded Price</span>
+                    <Heart className="h-5 w-5 text-red-600" />
+                    <span>Quick Actions</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={getLTP} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ltp-symbol">Symbol</Label>
-                      <Input
-                        id="ltp-symbol"
-                        placeholder="e.g., RELIANCE"
-                        value={ltpSymbol}
-                        onChange={(e) => setLtpSymbol(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" disabled={isLoading}>
-                      Get LTP
+                  <div className="space-y-4">
+                    <Button 
+                      onClick={() => router.push('/wishlist')}
+                      className="w-full bg-red-600 hover:bg-red-700"
+                    >
+                      <Heart className="h-4 w-4 mr-2" />
+                      View My Wishlist
                     </Button>
-                  </form>
+                    <p className="text-xs text-gray-500 text-center">
+                      Manage your saved instruments and track their performance
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
