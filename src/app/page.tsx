@@ -319,6 +319,14 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold">Connect IIFL Account</h3>
               <p className="text-gray-600">Provide your IIFL API credentials to establish a secure connection.</p>
+              <a 
+                href="https://api.iiflsecurities.com/api-keys.html" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline text-sm inline-block mt-2"
+              >
+                Get your API keys here →
+              </a>
             </div>
             <div className="space-y-4">
               <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto">
