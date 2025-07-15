@@ -70,6 +70,10 @@ export const API_ENDPOINTS = {
   MARKET_INSTRUMENT_MASTER: '/api/market/instruments/master',
   MARKET_INFO: '/api/market',
   
+  // Stock Data (New endpoints)
+  STOCK_DATA_GET: '/api/market/stock',  // Used with /{stock_name}
+  STOCK_DATA_POST: '/api/market/stock-data',
+  
   // IIFL Integration
   IIFL_MARKET_CREDENTIALS: '/api/iifl/credentials/market',
   IIFL_INTERACTIVE_CREDENTIALS: '/api/iifl/credentials/interactive',

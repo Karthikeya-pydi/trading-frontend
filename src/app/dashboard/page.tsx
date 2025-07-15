@@ -29,6 +29,7 @@ import {
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 import { TradingService } from "@/services/trading.service"
 import { PortfolioTab } from "@/components/dashboard/PortfolioTab"
+import { StockDataTab } from "@/components/market/StockDataTab"
 
 import { 
   Position, 
@@ -520,7 +521,8 @@ export default function DashboardPage() {
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="place-order">Place Order</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="market">Market Data</TabsTrigger>
+            {/* <TabsTrigger value="market">Market Data</TabsTrigger> */}
+            <TabsTrigger value="stock-data">Stock Data</TabsTrigger>
           </TabsList>
 
           {/* Portfolio Tab */}
@@ -831,11 +833,11 @@ export default function DashboardPage() {
             </Card>
           </TabsContent>
 
-          {/* Market Data Tab */}
-          <TabsContent value="market" className="space-y-6">
+          {/* Market Data Tab - Commented Out */}
+          {/* <TabsContent value="market" className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               {/* Instrument Search */}
-              <Card>
+              {/* <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Search className="h-5 w-5 text-blue-600" />
@@ -860,7 +862,7 @@ export default function DashboardPage() {
                     </div>
                     
                     {/* Dropdown Results */}
-                    {showDropdown && searchResults.length > 0 && (
+                    {/* {showDropdown && searchResults.length > 0 && (
                       <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                         {searchResults.map((instrument) => (
                           <div 
@@ -885,7 +887,7 @@ export default function DashboardPage() {
                     )}
                     
                     {/* No results message */}
-                    {showDropdown && searchQuery.trim() && !isSearching && searchResults.length === 0 && (
+                    {/* {showDropdown && searchQuery.trim() && !isSearching && searchResults.length === 0 && (
                       <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg p-3">
                         <p className="text-gray-500 text-center">No instruments found</p>
                       </div>
@@ -895,7 +897,7 @@ export default function DashboardPage() {
               </Card>
 
               {/* Quick Actions */}
-              <Card>
+              {/* <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Heart className="h-5 w-5 text-red-600" />
@@ -918,6 +920,11 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent> */}
+
+          {/* Stock Data Tab */}
+          <TabsContent value="stock-data" className="space-y-6">
+            <StockDataTab onRefresh={loadAllData} />
           </TabsContent>
         </Tabs>
       </main>

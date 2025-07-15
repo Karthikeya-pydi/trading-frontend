@@ -221,7 +221,7 @@ export interface MarketQuote {
   close: number
 }
 
-export interface MarketData {
+export interface MarketDataBasic {
   symbol: string
   ltp: number
   change: number
@@ -285,4 +285,103 @@ export interface ApiError {
 export interface TabComponentProps {
   className?: string
   children?: React.ReactNode
+}
+
+// =============================================================================
+// STOCK DATA TYPES
+// =============================================================================
+
+export interface StockInfo {
+  name: string
+  symbol: string
+  exchange_segment: number
+  instrument_id: string
+  series: string
+  isin: string
+  lot_size: string
+  tick_size: string
+  price_band_high: string
+  price_band_low: string
+}
+
+export interface TouchlineQuote {
+  LastTradedPrice: number
+  PercentChange: number
+  Open: number
+  High: number
+  Low: number
+  Close: number
+  TotalTradedQuantity: number
+  LastTradedQunatity?: number
+  TotalBuyQuantity?: number
+  TotalSellQuantity?: number
+  AverageTradedPrice?: number
+  LastTradedTime?: number
+  LastUpdateTime?: number
+  TotalValueTraded?: number | null
+}
+
+export interface MarketDepthQuote {
+  Bids: Array<{
+    Size: number
+    Price: number
+    TotalOrders: number
+    BuyBackMarketMaker: number
+  }>
+  Asks: Array<{
+    Size: number
+    Price: number
+    TotalOrders: number
+    BuyBackMarketMaker: number
+  }>
+  Touchline?: {
+    BidInfo: {
+      Size: number
+      Price: number
+      TotalOrders: number
+      BuyBackMarketMaker: number
+    }
+    AskInfo: {
+      Size: number
+      Price: number
+      TotalOrders: number
+      BuyBackMarketMaker: number
+    }
+  }
+}
+
+export interface OHLCQuote {
+  DateTime: string
+  Open: number
+  High: number
+  Low: number
+  Close: number
+  Volume: number
+}
+
+export interface MarketData {
+  touchline: {
+    listQuotes: string[] // JSON strings that need to be parsed
+  }
+  market_depth: {
+    listQuotes: string[] // JSON strings that need to be parsed
+  }
+}
+
+export interface HistoricalData {
+  ohlc: {
+    dataReponse: string // Pipe-separated string that needs to be parsed
+  }
+}
+
+export interface StockDataResponse {
+  type: string
+  stock_info: StockInfo
+  market_data: MarketData
+  historical_data: HistoricalData
+  timestamp: string
+}
+
+export interface StockDataRequest {
+  stock_name: string
 } 
