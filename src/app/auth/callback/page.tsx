@@ -1,88 +1,123 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { TrendingUp, Loader2, CheckCircle, XCircle } from "lucide-react"
 
-export default function AuthCallback() {
-  const [status, setStatus] = useState("Processing login...")
+export default function AuthCallbackPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
-    // Get token from URL parameters
-    const urlParams = new URLSearchParams(window.location.search)
-    const token = urlParams.get('token')
-    const error = urlParams.get('error')
-    
-    console.log('OAuth callback received:', { 
-      token: token ? `${token.substring(0, 20)}...` : null, 
-      error,
-      fullUrl: window.location.href 
-    })
+    const handleCallback = async () => {
+      try {
+        // Get token from URL parameters
+        const token = searchParams.get('token')
+        const error = searchParams.get('error')
 
-    if (token) {
-      // Store the token
-      localStorage.setItem('token', token)
-      console.log('OAuth successful, token stored')
-      
-      // Check if user already has API credentials
-      checkUserCredentials(token)
-    } else if (error) {
-      console.error('OAuth error:', error)
-      
-      // Redirect back to login with error immediately
-      window.location.href = `/login?error=${encodeURIComponent(error)}`
-    } else {
-      // No token or error, redirect to login immediately
-      console.log('No token received, redirecting to login immediately')
-      window.location.href = "/login"
-    }
-  }, [])
-
-  const checkUserCredentials = async (token: string) => {
-    try {
-      setStatus("Checking your account setup...")
-      
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-      const response = await fetch(`${API_BASE_URL}/api/users/me`, {
-        method: "GET",
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-      })
-
-      if (response.ok) {
-        const user = await response.json()
-        
-        // Check if user has either market or interactive credentials
-        const hasCredentials = user.has_iifl_market_credentials || user.has_iifl_interactive_credentials
-        
-        if (hasCredentials) {
-          console.log('User has existing credentials, redirecting to dashboard')
-          setStatus("Welcome back! Redirecting to dashboard...")
-          window.location.href = "/dashboard"
-        } else {
-          console.log('First-time user, redirecting to setup')
-          setStatus("Setting up your account...")
-          window.location.href = "/setup"
+        if (error) {
+          console.error('OAuth error:', error)
+          setStatus('error')
+          
+          setMessage('Authentication failed. Please try again.')
+          return
         }
-      } else {
-        // If check fails, assume first-time setup needed
-        console.log('Could not check credentials, redirecting to setup')
-        setStatus("Setting up your account...")
-        window.location.href = "/setup"
+
+        if (token) {
+          // Store the token
+          localStorage.setItem('token', token)
+          console.log('✅ Token stored successfully')
+          
+          setStatus('success')
+          setMessage('Authentication successful! Redirecting to dashboard...')
+          
+          // Redirect to dashboard after a short delay
+          setTimeout(() => {
+            router.push('/dashboard')
+          }, 1500)
+        } else {
+          setStatus('error')
+          setMessage('No authentication token received.')
+        }
+      } catch (err) {
+        console.error('Callback error:', err)
+        setStatus('error')
+        setMessage('An error occurred during authentication.')
       }
-    } catch (error) {
-      console.error('Error checking credentials:', error)
-      // If check fails, assume first-time setup needed
-      setStatus("Setting up your account...")
-      window.location.href = "/setup"
     }
-  }
+
+    handleCallback()
+  }, [searchParams, router])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="text-center">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-600">{status}</p>
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
+              <TrendingUp className="h-7 w-7 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-gray-900">IIFL Trading</span>
+          </div>
+        </div>
+
+        {/* Status Card */}
+        <Card className="bg-white shadow-lg border-0">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl font-bold text-gray-900">
+              {status === 'loading' && 'Authenticating...'}
+              {status === 'success' && 'Authentication Successful'}
+              {status === 'error' && 'Authentication Failed'}
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              {status === 'loading' && 'Please wait while we complete your sign-in'}
+              {status === 'success' && 'You have been successfully authenticated'}
+              {status === 'error' && 'There was an issue with your authentication'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="mb-6">
+              {status === 'loading' && (
+                <div className="flex items-center justify-center">
+                  <Loader2 className="h-12 w-12 animate-spin text-teal-600" />
+                </div>
+              )}
+              {status === 'success' && (
+                <div className="flex items-center justify-center">
+                  <CheckCircle className="h-12 w-12 text-green-600" />
+                </div>
+              )}
+              {status === 'error' && (
+                <div className="flex items-center justify-center">
+                  <XCircle className="h-12 w-12 text-red-600" />
+                </div>
+              )}
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              {message}
+            </p>
+
+            {status === 'error' && (
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push('/login')}
+                  className="w-full h-11 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-medium transition-all duration-200 rounded-md"
+                >
+                  Try Again
+                </button>
+                
+
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
       </div>
     </div>
   )

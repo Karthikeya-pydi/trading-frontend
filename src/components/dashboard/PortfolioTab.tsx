@@ -46,52 +46,96 @@ export function PortfolioTab({
   onSquareOffPosition
 }: PortfolioTabProps) {
   
-  // Extract holdings data from IIFL response structure
+  // Extract holdings data from holdings summary
   const getHoldingsFromData = () => {
-    if (holdings && Array.isArray(holdings) && holdings.length > 0) {
-      return holdings.map(holding => {
-        // Handle IIFL nested structure - use any to bypass type check for complex API response
-        const holdingData = (holding as any).Holdings || holding
-        return {
-          instrument: holdingData.ISIN || holdingData.symbol || 'Unknown',
-          quantity: holdingData.HoldingQuantity || holdingData.quantity || 0,
-          averagePrice: holdingData.BuyAvgPrice || holdingData.average_price || 0,
-          currentPrice: holdingData.LTP || holdingData.current_price || holdingData.BuyAvgPrice || 0,
-          investedValue: (holdingData.BuyAvgPrice || 0) * (holdingData.HoldingQuantity || 0),
-          marketValue: (holdingData.LTP || holdingData.BuyAvgPrice || 0) * (holdingData.HoldingQuantity || 0),
-          unrealizedPnL: ((holdingData.LTP || holdingData.BuyAvgPrice || 0) - (holdingData.BuyAvgPrice || 0)) * (holdingData.HoldingQuantity || 0)
+    console.log('🔍 PortfolioTab - Raw holdings data:', holdings)
+    console.log('🔍 PortfolioTab - Holdings summary data:', holdingsSummary)
+    
+    // Use holdings summary data if available (new API structure)
+    if (holdingsSummary?.holdings && Array.isArray(holdingsSummary.holdings)) {
+      console.log('✅ PortfolioTab - Using holdings summary data')
+      return holdingsSummary.holdings.map(holding => {
+        console.log('🔍 PortfolioTab - Processing holding from summary:', holding)
+        
+        const processed = {
+          instrument: holding.stock_name || holding.isin || 'Unknown',
+          quantity: holding.quantity || 0,
+          averagePrice: holding.average_price || 0,
+          currentPrice: holding.current_price || 0,
+          investedValue: holding.investment_value || 0,
+          marketValue: holding.current_value || 0,
+          unrealizedPnL: holding.unrealized_pnl || 0,
+          unrealizedPnLPercent: holding.unrealized_pnl_percent || 0,
+          purchaseDate: holding.purchase_date,
+          isCollateral: holding.is_collateral || false,
+          nseInstrumentId: holding.nse_instrument_id
         }
+        console.log('🔍 PortfolioTab - Processed holding from summary:', processed)
+        return processed
       })
     }
+    
+    // Fallback to old holdings data structure
+    if (holdings && Array.isArray(holdings) && holdings.length > 0) {
+      console.log('⚠️ PortfolioTab - Using fallback holdings data')
+      return holdings.map(holding => {
+        console.log('🔍 PortfolioTab - Processing holding from fallback:', holding)
+        
+        const processed = {
+          instrument: holding.instrument || holding.ISIN || 'Unknown',
+          quantity: holding.quantity || holding.HoldingQuantity || 0,
+          averagePrice: holding.average_price || holding.BuyAvgPrice || 0,
+          currentPrice: holding.current_price || holding.LTP || holding.BuyAvgPrice || 0,
+          investedValue: (holding.invested_value || 0) || ((holding.average_price || holding.BuyAvgPrice || 0) * (holding.quantity || holding.HoldingQuantity || 0)),
+          marketValue: (holding.market_value || 0) || ((holding.current_price || holding.LTP || holding.BuyAvgPrice || 0) * (holding.quantity || holding.HoldingQuantity || 0)),
+          unrealizedPnL: (holding.unrealized_pnl || 0) || ((holding.current_price || holding.LTP || holding.BuyAvgPrice || 0) - (holding.average_price || holding.BuyAvgPrice || 0)) * (holding.quantity || holding.HoldingQuantity || 0),
+          unrealizedPnLPercent: 0,
+          purchaseDate: null,
+          isCollateral: false,
+          nseInstrumentId: null
+        }
+        console.log('🔍 PortfolioTab - Processed holding from fallback:', processed)
+        return processed
+      })
+    }
+    
+    console.log('❌ PortfolioTab - No holdings data found, returning empty array')
     return []
   }
 
   const processedHoldings = getHoldingsFromData()
 
-  // Calculate total investment value from holdings
-  const calculateTotalInvestment = () => {
-    const total = processedHoldings.reduce((total, holding) => total + holding.investedValue, 0)
-    console.log('Total Investment Calculation:', {
-      holdingsCount: processedHoldings.length,
-      totalInvestment: total,
-      holdings: processedHoldings.map(h => ({
-        instrument: h.instrument,
-        quantity: h.quantity,
-        averagePrice: h.averagePrice,
-        investedValue: h.investedValue
-      }))
-    })
-    return total
+  // Get portfolio summary data with fallbacks
+  const getPortfolioData = () => {
+    // Use holdings summary data if available (new API structure)
+    if (holdingsSummary) {
+      console.log('✅ PortfolioTab - Using holdings summary for portfolio data')
+      return {
+        totalHoldings: holdingsSummary.total_holdings || processedHoldings.length || 0,
+        totalInvestment: holdingsSummary.total_investment || 0,
+        totalCurrentValue: holdingsSummary.total_current_value || 0,
+        totalPnL: holdingsSummary.unrealized_pnl || 0,
+        totalPnLPercent: holdingsSummary.unrealized_pnl_percent || 0,
+        dailyPnL: dailyPnL?.daily_pnl || portfolioSummary?.daily_pnl || 0
+      }
+    }
+    
+    // Fallback to old calculation method
+    console.log('⚠️ PortfolioTab - Using fallback portfolio data calculation')
+    const totalInvestment = processedHoldings.reduce((total, holding) => total + holding.investedValue, 0)
+    const totalPnL = processedHoldings.reduce((total, holding) => total + holding.unrealizedPnL, 0)
+    
+    return {
+      totalHoldings: processedHoldings.length || 0,
+      totalInvestment: portfolioSummary?.total_investment || totalInvestment,
+      totalCurrentValue: processedHoldings.reduce((total, holding) => total + holding.marketValue, 0),
+      totalPnL: pnlData?.total_pnl || portfolioSummary?.unrealized_pnl || totalPnL,
+      totalPnLPercent: totalInvestment > 0 ? (totalPnL / totalInvestment) * 100 : 0,
+      dailyPnL: dailyPnL?.daily_pnl || portfolioSummary?.daily_pnl || 0
+    }
   }
 
-  // Calculate P&L percentage for display
-  const calculatePnLPercent = () => {
-    const totalInvestment = calculateTotalInvestment()
-    if (pnlData?.total_pnl && totalInvestment > 0) {
-      return (pnlData.total_pnl / totalInvestment) * 100
-    }
-    return 0
-  }
+  const portfolioData = getPortfolioData()
 
   return (
     <div className="space-y-12 bg-gray-50 p-4 md:p-8 rounded-xl">
@@ -132,7 +176,7 @@ export function PortfolioTab({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {holdingsSummary?.total_holdings || processedHoldings.length || 0}
+              {portfolioData.totalHoldings}
             </div>
             <p className="text-xs text-muted-foreground">
               Active positions
@@ -148,7 +192,7 @@ export function PortfolioTab({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(calculateTotalInvestment())}
+              {formatCurrency(portfolioData.totalInvestment)}
             </div>
             <p className="text-xs text-muted-foreground">
               Total invested amount
@@ -163,11 +207,11 @@ export function PortfolioTab({
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${(pnlData?.total_pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(pnlData?.total_pnl || 0)}
+            <div className={`text-2xl font-bold ${portfolioData.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(portfolioData.totalPnL)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatPercent(calculatePnLPercent())} return
+              {formatPercent(portfolioData.totalPnLPercent)} return
             </p>
           </CardContent>
         </Card>
@@ -179,8 +223,8 @@ export function PortfolioTab({
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${(dailyPnL?.day_pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(dailyPnL?.day_pnl || 0)}
+            <div className={`text-2xl font-bold ${portfolioData.dailyPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(portfolioData.dailyPnL)}
             </div>
             <p className="text-xs text-muted-foreground">
               Daily change
@@ -209,19 +253,31 @@ export function PortfolioTab({
                 <table className="w-full rounded-lg overflow-hidden">
                   <thead className="sticky top-0 bg-gray-100 z-10">
                     <tr className="border-b">
-                      <th className="text-left p-3 font-semibold text-lg">Instrument</th>
+                      <th className="text-left p-3 font-semibold text-lg">Stock Name</th>
+                      <th className="text-left p-3 font-semibold text-lg">ISIN</th>
                       <th className="text-left p-3 font-semibold text-lg">Quantity</th>
                       <th className="text-left p-3 font-semibold text-lg">Avg Price</th>
                       <th className="text-left p-3 font-semibold text-lg">Current Price</th>
                       <th className="text-left p-3 font-semibold text-lg">Invested Value</th>
                       <th className="text-left p-3 font-semibold text-lg">Market Value</th>
                       <th className="text-left p-3 font-semibold text-lg">P&L</th>
+                      <th className="text-left p-3 font-semibold text-lg">Type</th>
                     </tr>
                   </thead>
                   <tbody>
                     {processedHoldings.map((holding, index) => (
                       <tr key={holding.instrument + index} className={index % 2 === 0 ? "bg-white border-b hover:bg-gray-50" : "bg-gray-50 border-b hover:bg-gray-100"}>
-                        <td className="p-3 font-medium">{holding.instrument}</td>
+                        <td className="p-3 font-medium">
+                          <div>
+                            <div className="font-semibold">{holding.instrument}</div>
+                            {holding.purchaseDate && (
+                              <div className="text-xs text-gray-500">
+                                {new Date(holding.purchaseDate).toLocaleDateString()}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm text-gray-600">{holding.nseInstrumentId || 'N/A'}</td>
                         <td className="p-3">{holding.quantity}</td>
                         <td className="p-3">{formatCurrency(holding.averagePrice)}</td>
                         <td className="p-3">{formatCurrency(holding.currentPrice)}</td>
@@ -231,8 +287,15 @@ export function PortfolioTab({
                           {formatCurrency(holding.unrealizedPnL)}
                           <br />
                           <span className="text-xs">
-                            {formatPercent(holding.investedValue > 0 ? (holding.unrealizedPnL / holding.investedValue) * 100 : 0)}
+                            {formatPercent(holding.unrealizedPnLPercent)}
                           </span>
+                        </td>
+                        <td className="p-3">
+                          {holding.isCollateral ? (
+                            <Badge variant="secondary" className="text-xs">Collateral</Badge>
+                          ) : (
+                            <Badge variant="default" className="text-xs">Regular</Badge>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -256,27 +319,27 @@ export function PortfolioTab({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className="text-lg font-bold">
-                    {formatCurrency(riskMetrics.portfolio_value || 0)}
+                    {formatCurrency(riskMetrics.net_exposure || riskMetrics.portfolio_value || 0)}
                   </div>
-                  <p className="text-sm text-gray-500">Portfolio Value</p>
+                  <p className="text-sm text-gray-500">Net Exposure</p>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-bold">
-                    {formatPercent(riskMetrics.margin_utilization || 0)}
+                    {formatCurrency(riskMetrics.gross_exposure || riskMetrics.total_exposure || 0)}
                   </div>
-                  <p className="text-sm text-gray-500">Margin Utilization</p>
+                  <p className="text-sm text-gray-500">Gross Exposure</p>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-bold">
-                    {formatCurrency(riskMetrics.max_loss || 0)}
+                    {formatCurrency(riskMetrics.total_unrealized_loss || riskMetrics.max_loss || 0)}
                   </div>
-                  <p className="text-sm text-gray-500">Max Loss</p>
+                  <p className="text-sm text-gray-500">Unrealized Loss</p>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-bold">
-                    {formatPercent(riskMetrics.risk_percentage || 0)}
+                    {formatPercent(riskMetrics.concentration_risk_percent || riskMetrics.risk_percentage || 0)}
                   </div>
-                  <p className="text-sm text-gray-500">Risk Percentage</p>
+                  <p className="text-sm text-gray-500">Concentration Risk</p>
                 </div>
               </div>
             </CardContent>

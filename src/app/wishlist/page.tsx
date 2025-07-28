@@ -5,20 +5,17 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
-  ArrowLeft, 
   Heart,
-  HeartOff,
   RefreshCw,
   BarChart3,
-  DollarSign,
   TrendingUp,
   TrendingDown,
   X,
   Trash2
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
+import { Layout } from "@/components/layout/Layout"
 
 // Types
 interface Instrument {
@@ -147,82 +144,62 @@ export default function WishlistPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading wishlist...</p>
+      <Layout title="Wishlist">
+        <div className="flex justify-center items-center h-[calc(100vh-6rem)]">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Loading wishlist...</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
+    <Layout title="Wishlist" onRefresh={refreshData} isLoading={isRefreshing}>
+      <div className="w-full">
+        {/* Welcome Section */}
+        <div className="mb-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => router.push('/dashboard')}
-                variant="outline"
-                size="sm"
-                className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
-              <div className="flex items-center space-x-2">
-                <Heart className="h-6 w-6 text-red-600" />
-                <span className="text-xl font-bold text-gray-900">My Wishlist</span>
-                <Badge variant="secondary" className="bg-red-100 text-red-800">
-                  {wishlist.length} items
-                </Badge>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">My Wishlist</h1>
+              <p className="text-gray-600 mt-1">
+                Track your favorite instruments and their market performance
+              </p>
             </div>
             <div className="flex items-center space-x-2">
+              <Badge variant="secondary" className="bg-red-100 text-red-800">
+                {wishlist.length} items
+              </Badge>
               {wishlist.length > 0 && (
-                <>
-                  <Button
-                    onClick={refreshData}
-                    disabled={isRefreshing}
-                    variant="outline"
-                    size="sm"
-                    className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-                    Refresh
-                  </Button>
-                  <Button
-                    onClick={clearWishlist}
-                    variant="outline"
-                    size="sm"
-                    className="bg-white text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Clear All
-                  </Button>
-                </>
+                <Button
+                  onClick={clearWishlist}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All
+                </Button>
               )}
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Wishlist</h1>
-          <p className="text-gray-600 mt-1">
-            Track your favorite instruments and their market performance
-          </p>
-        </div>
-
-        {/* Alerts */}
+        {/* Error Alert */}
         {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <div className="mb-6 animate-fade-in">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">!</span>
+                  </div>
+                  <span className="text-red-700 font-medium">{error}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {wishlist.length === 0 ? (
@@ -356,7 +333,7 @@ export default function WishlistPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   )
 } 

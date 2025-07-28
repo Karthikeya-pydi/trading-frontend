@@ -78,6 +78,7 @@ export const API_ENDPOINTS = {
   IIFL_MARKET_CREDENTIALS: '/api/iifl/credentials/market',
   IIFL_INTERACTIVE_CREDENTIALS: '/api/iifl/credentials/interactive',
   IIFL_VALIDATE_CREDENTIALS: '/api/iifl/credentials/validate',
+  IIFL_BALANCE: '/api/iifl/balance',
   
   // Health
   HEALTH: '/health'

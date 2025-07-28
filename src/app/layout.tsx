@@ -32,7 +32,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        {children}
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          {children}
+        </div>
       </body>
     </html>
   )

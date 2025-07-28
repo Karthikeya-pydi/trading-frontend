@@ -35,6 +35,7 @@ import {
 
 interface StockDataTabProps {
   onRefresh?: () => void
+  initialSearch?: string
 }
 
 interface ProcessedStockData extends Omit<StockDataResponse, 'market_data' | 'historical_data'> {
@@ -53,8 +54,8 @@ interface ProcessedStockData extends Omit<StockDataResponse, 'market_data' | 'hi
   }
 }
 
-export function StockDataTab({ onRefresh }: StockDataTabProps) {
-  const [searchQuery, setSearchQuery] = useState("")
+export function StockDataTab({ onRefresh, initialSearch = "" }: StockDataTabProps) {
+  const [searchQuery, setSearchQuery] = useState(initialSearch)
   const [stockData, setStockData] = useState<ProcessedStockData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -244,6 +245,13 @@ export function StockDataTab({ onRefresh }: StockDataTabProps) {
       }
     }
   }, [refreshInterval])
+
+  // Auto-search when initialSearch is provided
+  useEffect(() => {
+    if (initialSearch && initialSearch.trim()) {
+      fetchStockData(initialSearch.trim())
+    }
+  }, [initialSearch, fetchStockData])
 
   // Memoized components for better performance
   const MarketDepthDisplay = useMemo(() => {

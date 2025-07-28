@@ -1,540 +1,252 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { TrendingUp, Eye, EyeOff, Shield, Key, BarChart3, Activity, CheckCircle } from "lucide-react"
-import Link from "next/link"
-
-type SetupStep = "interactive" | "market" | "complete"
+import { TrendingUp, ArrowRight, Loader2, CheckCircle } from "lucide-react"
 
 export default function SetupPage() {
-  const [currentStep, setCurrentStep] = useState<SetupStep>("interactive")
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set())
-  
-  const [formData, setFormData] = useState({
-    // Interactive API credentials
-    interactive_api_key: "",
-    interactive_secret_key: "",
-    interactive_user_id: "",
-    // Market API credentials
-    market_api_key: "",
-    market_secret_key: "",
-    market_user_id: "",
-  })
-  
-  const [showSecrets, setShowSecrets] = useState({
-    interactive_secret_key: false,
-    market_secret_key: false,
-  })
-  
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+    phone: ""
+  })
   const [error, setError] = useState("")
 
-  // Check if user is authenticated
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      console.log('No token found, redirecting to login')
-      window.location.href = "/login"
-      return
-    }
-    console.log('User authenticated, checking existing setup')
-    checkExistingCredentials()
-  }, [])
-
-  const checkExistingCredentials = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-      
-      const response = await fetch(`${API_BASE_URL}/api/users/me`, {
-        method: "GET",
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-      })
-
-      if (response.ok) {
-        const user = await response.json()
-        
-        // Check which credentials are already configured
-        const newCompletedSteps = new Set<string>()
-        
-        if (user.has_iifl_interactive_credentials) {
-          newCompletedSteps.add("interactive")
-        }
-        
-        if (user.has_iifl_market_credentials) {
-          newCompletedSteps.add("market")
-        }
-        
-        setCompletedSteps(newCompletedSteps)
-        
-        // If both are completed, user can go to dashboard
-        if (user.has_iifl_interactive_credentials && user.has_iifl_market_credentials) {
-          setCurrentStep("complete")
-        } else if (user.has_iifl_interactive_credentials) {
-          setCurrentStep("market")
-        }
-        
-        setError("") // Clear any errors
-        console.log('Existing credentials checked')
-      }
-    } catch (error) {
-      console.log('Could not check existing credentials:', error)
-    }
-  }
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    setError("")
-  }
-
-  const toggleVisibility = (field: "interactive_secret_key" | "market_secret_key") => {
-    setShowSecrets((prev) => ({ ...prev, [field]: !prev[field] }))
-  }
-
-  const handleStepSubmit = async (apiType: "interactive" | "market") => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setIsLoading(true)
     setError("")
 
     try {
-      // Validate required fields based on API type
-      if (apiType === "interactive") {
-        if (!formData.interactive_api_key || !formData.interactive_secret_key || !formData.interactive_user_id) {
-          throw new Error("All Interactive API fields are required")
-        }
-      } else if (apiType === "market") {
-        if (!formData.market_api_key || !formData.market_secret_key || !formData.market_user_id) {
-          throw new Error("All Market API fields are required")
-        }
+      // Validate passwords match
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match')
+        setIsLoading(false)
+        return
       }
 
-      // Prepare payload based on API type
-      const payload = {
-        api_type: apiType,
-        api_key: apiType === "interactive" ? formData.interactive_api_key : formData.market_api_key,
-        secret_key: apiType === "interactive" ? formData.interactive_secret_key : formData.market_secret_key,
-        user_id: apiType === "interactive" ? formData.interactive_user_id : formData.market_user_id,
-      }
-
-      // Call your backend API to save credentials
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/users/set-iifl-credentials`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to save API keys. Please check your credentials.")
-      }
-
-      const result = await response.json()
-      console.log(`${apiType} API keys saved successfully:`, result)
-
-      // Mark step as completed
-      setCompletedSteps(prev => new Set([...prev, apiType]))
-
-      // Move to next step
-      if (apiType === "interactive") {
-        setCurrentStep("market")
-      } else if (apiType === "market") {
-        setCurrentStep("complete")
-      }
-
-    } catch (error) {
-      setError(error instanceof Error ? error.message : `Failed to connect ${apiType} API. Please check your credentials.`)
+      // Simulate account creation
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // Store demo token and redirect to dashboard
+      localStorage.setItem('token', 'demo-token-123')
+      router.push('/dashboard')
+    } catch (err) {
+      setError('Failed to create account. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleCompleteSetup = () => {
-    // Redirect to dashboard on completion
-    window.location.href = "/dashboard"
-  }
-
-  const getStepTitle = () => {
-    switch (currentStep) {
-      case "interactive":
-        return "Step 1: Interactive API Setup"
-      case "market":
-        return "Step 2: Market API Setup"
-      case "complete":
-        return "Setup Complete!"
-      default:
-        return "API Setup"
-    }
-  }
-
-  const getStepDescription = () => {
-    switch (currentStep) {
-      case "interactive":
-        return "First, configure your Interactive API credentials for trading capabilities"
-      case "market":
-        return "Now, set up your Market API credentials for market data access"
-      case "complete":
-        return "Both APIs are configured successfully. You're ready to start trading!"
-      default:
-        return "Configure your IIFL API credentials"
-    }
-  }
-
-  const renderProgressSteps = () => (
-    <div className="flex items-center justify-center mb-8 space-x-4">
-      <div className="flex items-center space-x-2">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-          completedSteps.has("interactive") 
-            ? "bg-green-600 text-white" 
-            : currentStep === "interactive" 
-              ? "bg-blue-600 text-white" 
-              : "bg-gray-300 text-gray-600"
-        }`}>
-          {completedSteps.has("interactive") ? <CheckCircle className="h-4 w-4" /> : "1"}
-        </div>
-        <span className={`text-sm font-medium ${
-          currentStep === "interactive" ? "text-blue-600" : completedSteps.has("interactive") ? "text-green-600" : "text-gray-500"
-        }`}>
-          Interactive
-        </span>
-      </div>
-      
-      <div className={`w-12 h-0.5 ${completedSteps.has("interactive") ? "bg-green-600" : "bg-gray-300"}`} />
-      
-      <div className="flex items-center space-x-2">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-          completedSteps.has("market") 
-            ? "bg-green-600 text-white" 
-            : currentStep === "market" 
-              ? "bg-blue-600 text-white" 
-              : "bg-gray-300 text-gray-600"
-        }`}>
-          {completedSteps.has("market") ? <CheckCircle className="h-4 w-4" /> : "2"}
-        </div>
-        <span className={`text-sm font-medium ${
-          currentStep === "market" ? "text-blue-600" : completedSteps.has("market") ? "text-green-600" : "text-gray-500"
-        }`}>
-          Market
-        </span>
-      </div>
-      
-      <div className={`w-12 h-0.5 ${completedSteps.has("market") ? "bg-green-600" : "bg-gray-300"}`} />
-      
-      <div className="flex items-center space-x-2">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-          currentStep === "complete" 
-            ? "bg-green-600 text-white" 
-            : "bg-gray-300 text-gray-600"
-        }`}>
-          {currentStep === "complete" ? <CheckCircle className="h-4 w-4" /> : "3"}
-        </div>
-        <span className={`text-sm font-medium ${
-          currentStep === "complete" ? "text-green-600" : "text-gray-500"
-        }`}>
-          Complete
-        </span>
-      </div>
-    </div>
-  )
+  const steps = [
+    { number: 1, title: "Account Details", description: "Create your trading account" },
+    { number: 2, title: "Verification", description: "Verify your email and phone" },
+    { number: 3, title: "Complete", description: "Start trading" }
+  ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-2xl">
-        {/* Header */}
+        {/* Logo and Title */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-4">
-            <TrendingUp className="h-8 w-8 text-blue-600" />
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
+              <TrendingUp className="h-7 w-7 text-white" />
+            </div>
             <span className="text-2xl font-bold text-gray-900">IIFL Trading</span>
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Connect Your IIFL Account</h1>
-          <p className="text-gray-600 mt-2">{getStepDescription()}</p>
+          </div>
+          <p className="text-gray-600">Set up your trading account</p>
         </div>
 
         {/* Progress Steps */}
-        {renderProgressSteps()}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-4">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                  currentStep >= step.number 
+                    ? 'bg-teal-600 border-teal-600 text-white' 
+                    : 'border-gray-300 text-gray-500'
+                }`}>
+                  {currentStep > step.number ? (
+                    <CheckCircle className="h-5 w-5" />
+                  ) : (
+                    <span className="text-sm font-medium">{step.number}</span>
+                  )}
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-16 h-0.5 mx-2 ${
+                    currentStep > step.number ? 'bg-teal-600' : 'bg-gray-300'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-4">
+            <h3 className="text-lg font-semibold text-gray-900">{steps[currentStep - 1].title}</h3>
+            <p className="text-sm text-gray-600">{steps[currentStep - 1].description}</p>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Key className="h-5 w-5 text-blue-600" />
-              <span>{getStepTitle()}</span>
-            </CardTitle>
-            <CardDescription>
-              {currentStep === "complete" 
-                ? "Both your Interactive and Market API credentials have been configured successfully."
-                : "Your credentials are encrypted and stored securely."
-              }
+        {/* Setup Card */}
+        <Card className="bg-white shadow-lg border-0">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center text-gray-900">Create Account</CardTitle>
+            <CardDescription className="text-center text-gray-600">
+              Join thousands of traders on our platform
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-            {/* Interactive API Step */}
-            {currentStep === "interactive" && (
-              <form onSubmit={(e) => { e.preventDefault(); handleStepSubmit("interactive"); }} className="space-y-6">
-                <div className="p-4 bg-blue-50 rounded-lg border">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Activity className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-medium text-blue-900">Interactive API</h4>
-                  </div>
-                  <p className="text-sm text-blue-700">
-                    Enables full trading capabilities including placing orders, viewing positions, and portfolio management.
-                  </p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
+                    First Name
+                  </Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="Enter your first name"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    required
+                    className="h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500"
+                  />
                 </div>
 
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="interactive_api_key">Interactive API Key *</Label>
-                      <Input
-                        id="interactive_api_key"
-                        type="text"
-                        placeholder="Enter your Interactive API Key"
-                        value={formData.interactive_api_key}
-                        onChange={(e) => handleInputChange("interactive_api_key", e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="interactive_user_id">Interactive User ID *</Label>
-                      <Input
-                        id="interactive_user_id"
-                        type="text"
-                        placeholder="Enter your Interactive User ID"
-                        value={formData.interactive_user_id}
-                        onChange={(e) => handleInputChange("interactive_user_id", e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="interactive_secret_key">Interactive Secret Key *</Label>
-                    <div className="relative">
-                      <Input
-                        id="interactive_secret_key"
-                        type={showSecrets.interactive_secret_key ? "text" : "password"}
-                        placeholder="Enter your Interactive Secret Key"
-                        value={formData.interactive_secret_key}
-                        onChange={(e) => handleInputChange("interactive_secret_key", e.target.value)}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-                        onClick={() => toggleVisibility("interactive_secret_key")}
-                      >
-                        {showSecrets.interactive_secret_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Enter your last name"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    required
+                    className="h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500"
+                  />
                 </div>
-
-                <div className="flex space-x-4">
-                  <Button type="submit" disabled={isLoading} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                    {isLoading ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Saving...</span>
-                      </div>
-                    ) : (
-                      "Save & Continue"
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => window.history.back()}
-                    className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  >
-                    Back
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {/* Market API Step */}
-            {currentStep === "market" && (
-              <form onSubmit={(e) => { e.preventDefault(); handleStepSubmit("market"); }} className="space-y-6">
-                <div className="p-4 bg-green-50 rounded-lg border">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <BarChart3 className="h-5 w-5 text-green-600" />
-                    <h4 className="font-medium text-green-900">Market API</h4>
-                  </div>
-                  <p className="text-sm text-green-700">
-                    Provides read-only access to market data, quotes, and historical information without trading capabilities.
-                  </p>
-                </div>
-
-                {completedSteps.has("interactive") && (
-                  <div className="p-4 bg-blue-50 rounded-lg border">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-700">Interactive API configured successfully</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="market_api_key">Market API Key *</Label>
-                      <Input
-                        id="market_api_key"
-                        type="text"
-                        placeholder="Enter your Market API Key"
-                        value={formData.market_api_key}
-                        onChange={(e) => handleInputChange("market_api_key", e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="market_user_id">Market User ID *</Label>
-                      <Input
-                        id="market_user_id"
-                        type="text"
-                        placeholder="Enter your Market User ID"
-                        value={formData.market_user_id}
-                        onChange={(e) => handleInputChange("market_user_id", e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="market_secret_key">Market Secret Key *</Label>
-                    <div className="relative">
-                      <Input
-                        id="market_secret_key"
-                        type={showSecrets.market_secret_key ? "text" : "password"}
-                        placeholder="Enter your Market Secret Key"
-                        value={formData.market_secret_key}
-                        onChange={(e) => handleInputChange("market_secret_key", e.target.value)}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-                        onClick={() => toggleVisibility("market_secret_key")}
-                      >
-                        {showSecrets.market_secret_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex space-x-4">
-                  <Button type="submit" disabled={isLoading} className="flex-1 bg-green-600 hover:bg-green-700">
-                    {isLoading ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Saving...</span>
-                      </div>
-                    ) : (
-                      "Save & Continue"
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep("interactive")}
-                    className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  >
-                    Back
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {/* Completion Step */}
-            {currentStep === "complete" && (
-              <div className="space-y-6 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-                
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Setup Complete!</h3>
-                  <p className="text-gray-600">
-                    Both your Interactive and Market API credentials have been configured successfully. 
-                    You can now access all trading and market data features.
-                  </p>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4 mt-6">
-                  <div className="p-4 bg-blue-50 rounded-lg border">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Activity className="h-5 w-5 text-blue-600" />
-                      <Badge variant="secondary" className="bg-green-100 text-green-700">Configured</Badge>
-                    </div>
-                    <h4 className="font-medium text-blue-900">Interactive API</h4>
-                    <p className="text-sm text-blue-700">Ready for trading operations</p>
-                  </div>
-                  
-                  <div className="p-4 bg-green-50 rounded-lg border">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <BarChart3 className="h-5 w-5 text-green-600" />
-                      <Badge variant="secondary" className="bg-green-100 text-green-700">Configured</Badge>
-                    </div>
-                    <h4 className="font-medium text-green-900">Market API</h4>
-                    <p className="text-sm text-green-700">Ready for market data access</p>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={handleCompleteSetup}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  size="lg"
-                >
-                  Go to Dashboard
-                </Button>
               </div>
-            )}
 
-            {currentStep !== "complete" && (
-              <Alert className="mt-6">
-                <Shield className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Security Note:</strong> Your credentials are encrypted using industry-standard encryption
-                  before being stored. We use these only to authenticate with IIFL APIs and never share them with third
-                  parties.
-                </AlertDescription>
-              </Alert>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  required
+                  className="h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                  Phone Number
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="Enter your phone number"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  required
+                  className="h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Create a strong password"
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                  className="h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+                  Confirm Password
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  required
+                  className="h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-11 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-medium transition-all duration-200"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    Create Account
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => router.push('/login')}
+                  className="text-teal-600 hover:text-teal-700 font-medium"
+                >
+                  Sign in here
+                </button>
+              </p>
+            </div>
           </CardContent>
         </Card>
 
-        {currentStep !== "complete" && (
-          <div className="text-center mt-6 text-sm text-gray-600">
-            <p>
-              Need help finding your API credentials?{" "}
-              <Link href="#" className="text-blue-600 hover:underline">
-                View IIFL Setup Guide
-              </Link>
-            </p>
-          </div>
-        )}
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500">
+            By creating an account, you agree to our Terms of Service and Privacy Policy.
+          </p>
+        </div>
       </div>
     </div>
   )

@@ -1,13 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp } from "lucide-react"
-import Link from "next/link"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { TrendingUp, Loader2 } from "lucide-react"
+import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   // Handle OAuth error from callback
   useEffect(() => {
@@ -16,67 +20,77 @@ export default function LoginPage() {
 
     if (error) {
       console.error('OAuth error:', error)
-      setIsLoading(false)
-      // You can show an error message to the user here
+      setError('Authentication failed. Please try again.')
     }
   }, [])
 
   const handleGoogleLogin = async () => {
     setIsLoading(true)
+    setError("")
+    
     try {
       // Redirect to backend Google OAuth endpoint with callback URL
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-      const FRONTEND_URL = window.location.origin // This will be http://localhost:3001
+      const FRONTEND_URL = window.location.origin
       const callbackUrl = `${FRONTEND_URL}/auth/callback`
       
-      const oauthUrl = `${API_BASE_URL}/api/auth/oauth/google/login?redirect_uri=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(callbackUrl)}`
+      const oauthUrl = `${API_BASE_URL}${API_ENDPOINTS.GOOGLE_OAUTH}?redirect_uri=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(callbackUrl)}`
       
       console.log('🚀 Starting Google OAuth...')
       console.log('📍 Frontend URL:', FRONTEND_URL)  
       console.log('🔙 Callback URL:', callbackUrl)
       console.log('🌐 OAuth URL:', oauthUrl)
-      console.log('⚠️  Backend MUST redirect back to:', callbackUrl + '?token=JWT_TOKEN')
-      
-      // Show alert with the critical info
-      alert(`🚨 IMPORTANT FOR BACKEND:\n\nAfter Google OAuth, your backend MUST redirect to:\n${callbackUrl}?token=YOUR_JWT_TOKEN\n\nClick OK to start OAuth flow...`)
       
       window.location.href = oauthUrl
     } catch (error) {
       console.error("Login failed:", error)
+      setError('Failed to start authentication. Please try again.')
       setIsLoading(false)
     }
   }
 
+
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* Logo and Title */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2">
-            <TrendingUp className="h-8 w-8 text-blue-600" />
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
+              <TrendingUp className="h-7 w-7 text-white" />
+            </div>
             <span className="text-2xl font-bold text-gray-900">IIFL Trading</span>
-          </Link>
+          </div>
+          <p className="text-gray-600">Sign in to your trading account</p>
         </div>
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in to access your IIFL trading dashboard</CardDescription>
+        {/* Login Card */}
+        <Card className="bg-white shadow-lg border-0">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center text-gray-900">Welcome back</CardTitle>
+            <CardDescription className="text-center text-gray-600">
+              Sign in with your Google account to access your trading dashboard
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             <Button
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="w-full bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-              size="lg"
+              className="w-full h-11 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium transition-all duration-200"
             >
               {isLoading ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
-                  <span>Signing in...</span>
-                </div>
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Signing in...
+                </>
               ) : (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
                       fill="currentColor"
@@ -100,26 +114,30 @@ export default function LoginPage() {
               )}
             </Button>
 
-            <div className="text-center text-sm text-gray-600">
-              <p>
+
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
                 By continuing, you agree to our{" "}
-                <Link href="#" className="text-blue-600 hover:underline">
+                <button
+                  type="button"
+                  className="text-teal-600 hover:text-teal-700 font-medium"
+                >
                   Terms of Service
-                </Link>{" "}
+                </button>{" "}
                 and{" "}
-                <Link href="#" className="text-blue-600 hover:underline">
+                <button
+                  type="button"
+                  className="text-teal-600 hover:text-teal-700 font-medium"
+                >
                   Privacy Policy
-                </Link>
+                </button>
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6">
-          <Link href="/" className="text-sm text-gray-600 hover:text-blue-600">
-            ← Back to Home
-          </Link>
-        </div>
+
       </div>
     </div>
   )
