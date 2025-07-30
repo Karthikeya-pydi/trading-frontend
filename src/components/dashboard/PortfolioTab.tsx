@@ -200,10 +200,10 @@ export function PortfolioTab({
           </CardContent>
         </Card>
 
-        {/* Total P&L */}
+        {/* Today's P&L */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's P&L</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -216,10 +216,11 @@ export function PortfolioTab({
           </CardContent>
         </Card>
 
-        {/* Daily P&L */}
+        {/* Balance */}
+        {/* TODO: Add balance */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's P&L</CardTitle>
+            <CardTitle className="text-sm font-medium">Balance</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -227,7 +228,7 @@ export function PortfolioTab({
               {formatCurrency(portfolioData.dailyPnL)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Daily change
+              
             </p>
           </CardContent>
         </Card>
@@ -259,7 +260,7 @@ export function PortfolioTab({
                       <th className="text-left p-3 font-semibold text-lg">Avg Price</th>
                       <th className="text-left p-3 font-semibold text-lg">Current Price</th>
                       <th className="text-left p-3 font-semibold text-lg">Invested Value</th>
-                      <th className="text-left p-3 font-semibold text-lg">Market Value</th>
+                      <th className="text-left p-3 font-semibold text-lg">Current Value</th>
                       <th className="text-left p-3 font-semibold text-lg">P&L</th>
                       <th className="text-left p-3 font-semibold text-lg">Type</th>
                     </tr>

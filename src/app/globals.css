@@ -179,7 +179,6 @@
 .animate-slide-in-right {
   animation: slideInFromRight 0.3s ease-out;
 }
-
 .animate-slide-in-left {
   animation: slideInFromLeft 0.3s ease-out;
 }
@@ -195,3 +194,4 @@
 .animate-pulse-slow {
   animation: pulse 2s infinite;
 }
+
