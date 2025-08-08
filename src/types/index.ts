@@ -459,11 +459,35 @@ export interface HistoricalData {
   }
 }
 
+export interface StockAnalytics {
+  symbol: string
+  current_price: number
+  market_cap: number | null
+  returns: {
+    "1d": number
+    "1w": number
+    "1m": number
+    "6m": number
+    "1y": number
+  }
+  cagr: {
+    "5y": number
+  }
+  gap_with_nifty: {
+    "1w": number
+    "1m": number
+    "6m": number
+    "1y": number
+    "5y_cagr": number
+  }
+}
+
 export interface StockDataResponse {
   type: string
   stock_info: StockInfo
   market_data: MarketData
   historical_data: HistoricalData
+  analytics?: StockAnalytics
   timestamp: string
 }
 

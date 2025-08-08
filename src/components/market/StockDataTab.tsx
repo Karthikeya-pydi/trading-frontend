@@ -30,8 +30,10 @@ import {
   StockInfo, 
   TouchlineQuote, 
   MarketDepthQuote, 
-  OHLCQuote 
+  OHLCQuote,
+  StockAnalytics
 } from "@/types"
+import { StockAnalytics as StockAnalyticsComponent } from "./StockAnalytics"
 
 interface StockDataTabProps {
   onRefresh?: () => void
@@ -52,6 +54,7 @@ interface ProcessedStockData extends Omit<StockDataResponse, 'market_data' | 'hi
       listQuotes: OHLCQuote[]
     }
   }
+  analytics?: StockAnalytics
 }
 
 export function StockDataTab({ onRefresh, initialSearch = "" }: StockDataTabProps) {
@@ -145,7 +148,8 @@ export function StockDataTab({ onRefresh, initialSearch = "" }: StockDataTabProp
           ...data.historical_data.ohlc,
           listQuotes: parseHistoricalData(data.historical_data.ohlc.dataReponse)
         }
-      }
+      },
+      analytics: data.analytics
     }
   }, [parseHistoricalData])
 
@@ -579,6 +583,21 @@ export function StockDataTab({ onRefresh, initialSearch = "" }: StockDataTabProp
               {HistoricalDataDisplay}
             </CardContent>
           </Card>
+
+          {/* Analytics Section */}
+          {stockData.analytics ? (
+            <StockAnalyticsComponent analytics={stockData.analytics} />
+          ) : (
+            <Card>
+              <CardContent className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics Not Available</h3>
+                <p className="text-gray-600">
+                  Performance analytics are not available for this stock. This could be due to insufficient historical data or the stock not being supported for analytics.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

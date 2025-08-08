@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { stockName: string } }
-) {
+export async function POST(request: NextRequest) {
   try {
-    const stockName = params.stockName.toUpperCase()
-    
+    const body = await request.json()
+    const { stock_name } = body
+
+    if (!stock_name) {
+      return NextResponse.json(
+        { detail: "stock_name is required" },
+        { status: 400 }
+      )
+    }
+
     // Get authorization header from the request
     const authHeader = request.headers.get('authorization')
     
     // Make request to your backend API
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const response = await fetch(`${backendUrl}/api/market/stock/${stockName}`, {
+    const response = await fetch(`${backendUrl}/api/market/stock-data`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { 'Authorization': authHeader })
-      }
+      },
+      body: JSON.stringify({ stock_name: stock_name.toUpperCase() })
     })
 
     if (!response.ok) {
@@ -28,7 +35,7 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching stock data:', error)
     return NextResponse.json(
-      { detail: `Failed to fetch stock data for '${params.stockName}'` },
+      { detail: `Failed to fetch stock data: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     )
   }
