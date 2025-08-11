@@ -74,6 +74,9 @@ export const API_ENDPOINTS = {
   STOCK_DATA_GET: '/api/market/stock',  // Used with /{stock_name}
   STOCK_DATA_POST: '/api/market/stock-data',
   
+  // Bhavcopy Data
+  BHAVCOPY_DATA: '/api/market/bhavcopy',
+  
   // IIFL Integration
   IIFL_MARKET_CREDENTIALS: '/api/iifl/credentials/market',
   IIFL_INTERACTIVE_CREDENTIALS: '/api/iifl/credentials/interactive',
