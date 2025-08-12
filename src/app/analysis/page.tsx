@@ -390,11 +390,33 @@ export default function AnalysisPage() {
                       </th>
                       <th 
                         className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("LAST_PRICE")}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Last Price</span>
+                          {sortField === "LAST_PRICE" && (
+                            <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                         onClick={() => handleSort("CLOSE_PRICE")}
                       >
                         <div className="flex items-center space-x-1">
                           <span>Close</span>
                           {sortField === "CLOSE_PRICE" && (
+                            <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("AVG_PRICE")}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Avg Price</span>
+                          {sortField === "AVG_PRICE" && (
                             <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                           )}
                         </div>
@@ -412,11 +434,33 @@ export default function AnalysisPage() {
                       </th>
                       <th 
                         className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("NO_OF_TRADES")}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>No. of Trades</span>
+                          {sortField === "NO_OF_TRADES" && (
+                            <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                         onClick={() => handleSort("TURNOVER_LACS")}
                       >
                         <div className="flex items-center space-x-1">
                           <span>Turnover (Lacs)</span>
                           {sortField === "TURNOVER_LACS" && (
+                            <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("DELIV_QTY")}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Delivery Qty</span>
+                          {sortField === "DELIV_QTY" && (
                             <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                           )}
                         </div>
@@ -464,16 +508,31 @@ export default function AnalysisPage() {
                           ₹{record.LOW_PRICE.toFixed(2)}
                         </td>
                         <td className="border border-gray-200 px-3 py-2 text-sm">
+                          <div className={`flex items-center space-x-1 ${getChangeColor(record.LAST_PRICE, record.PREV_CLOSE)}`}>
+                            {getChangeIcon(record.LAST_PRICE, record.PREV_CLOSE)}
+                            <span>₹{record.LAST_PRICE.toFixed(2)}</span>
+                          </div>
+                        </td>
+                        <td className="border border-gray-200 px-3 py-2 text-sm">
                           <div className={`flex items-center space-x-1 ${getChangeColor(record.CLOSE_PRICE, record.PREV_CLOSE)}`}>
                             {getChangeIcon(record.CLOSE_PRICE, record.PREV_CLOSE)}
                             <span className="font-medium">₹{record.CLOSE_PRICE.toFixed(2)}</span>
                           </div>
                         </td>
                         <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                          ₹{record.AVG_PRICE.toFixed(2)}
+                        </td>
+                        <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
                           {record.TTL_TRD_QNTY.toLocaleString()}
                         </td>
                         <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                          {record.NO_OF_TRADES.toLocaleString()}
+                        </td>
+                        <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
                           ₹{record.TURNOVER_LACS.toFixed(2)} L
+                        </td>
+                        <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                          {formatDeliveryData(record.DELIV_QTY)}
                         </td>
                         <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
                           {formatDeliveryData(record.DELIV_PER)}

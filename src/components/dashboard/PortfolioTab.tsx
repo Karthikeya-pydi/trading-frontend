@@ -1,10 +1,12 @@
 "use client"
 
+import React, { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { RefreshCw, TrendingUp, TrendingDown, DollarSign, Activity, X } from "lucide-react"
+import { RefreshCw, TrendingUp, TrendingDown, DollarSign, Activity, X, ChevronUp, ChevronDown } from "lucide-react"
 import { formatCurrency, formatPercent } from "@/lib/formatters"
+import { StockBhavcopyDropdown } from "./StockBhavcopyDropdown"
 import { 
   PortfolioSummary, 
   PnLData, 
@@ -45,6 +47,17 @@ export function PortfolioTab({
   onUpdatePrices,
   onSquareOffPosition
 }: PortfolioTabProps) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+
+  const toggleRow = (stockSymbol: string) => {
+    const newExpanded = new Set(expandedRows)
+    if (newExpanded.has(stockSymbol)) {
+      newExpanded.delete(stockSymbol)
+    } else {
+      newExpanded.add(stockSymbol)
+    }
+    setExpandedRows(newExpanded)
+  }
   
   // Extract holdings data from holdings summary
   const getHoldingsFromData = () => {
@@ -267,38 +280,65 @@ export function PortfolioTab({
                   </thead>
                   <tbody>
                     {processedHoldings.map((holding, index) => (
-                      <tr key={holding.instrument + index} className={index % 2 === 0 ? "bg-white border-b hover:bg-gray-50" : "bg-gray-50 border-b hover:bg-gray-100"}>
-                        <td className="p-3 font-medium">
-                          <div>
-                            <div className="font-semibold">{holding.instrument}</div>
-                            {holding.purchaseDate && (
-                              <div className="text-xs text-gray-500">
-                                {new Date(holding.purchaseDate).toLocaleDateString()}
-                              </div>
-                            )}
+                      <React.Fragment key={holding.instrument + index}>
+                        <tr className={index % 2 === 0 ? "bg-white border-b hover:bg-gray-50" : "bg-gray-50 border-b hover:bg-gray-100"}>
+                                                  <td className="p-3 font-medium">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <div className="font-semibold">{holding.instrument}</div>
+                              {holding.purchaseDate && (
+                                <div className="text-xs text-gray-500">
+                                  {new Date(holding.purchaseDate).toLocaleDateString()}
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleRow(holding.instrument)}
+                              className="h-6 w-6 p-0 hover:bg-blue-50"
+                            >
+                              {expandedRows.has(holding.instrument) ? (
+                                <ChevronUp className="h-4 w-4 text-blue-600" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                              )}
+                            </Button>
                           </div>
                         </td>
-                        <td className="p-3 text-sm text-gray-600">{holding.nseInstrumentId || 'N/A'}</td>
-                        <td className="p-3">{holding.quantity}</td>
-                        <td className="p-3">{formatCurrency(holding.averagePrice)}</td>
-                        <td className="p-3">{formatCurrency(holding.currentPrice)}</td>
-                        <td className="p-3">{formatCurrency(holding.investedValue)}</td>
-                        <td className="p-3">{formatCurrency(holding.marketValue)}</td>
-                        <td className={`p-3 font-bold ${holding.unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}> 
-                          {formatCurrency(holding.unrealizedPnL)}
-                          <br />
-                          <span className="text-xs">
-                            {formatPercent(holding.unrealizedPnLPercent)}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          {holding.isCollateral ? (
-                            <Badge variant="secondary" className="text-xs">Collateral</Badge>
-                          ) : (
-                            <Badge variant="default" className="text-xs">Regular</Badge>
-                          )}
-                        </td>
-                      </tr>
+                          <td className="p-3 text-sm text-gray-600">{holding.nseInstrumentId || 'N/A'}</td>
+                          <td className="p-3">{holding.quantity}</td>
+                          <td className="p-3">{formatCurrency(holding.averagePrice)}</td>
+                          <td className="p-3">{formatCurrency(holding.currentPrice)}</td>
+                          <td className="p-3">{formatCurrency(holding.investedValue)}</td>
+                          <td className="p-3">{formatCurrency(holding.marketValue)}</td>
+                          <td className={`p-3 font-bold ${holding.unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}> 
+                            {formatCurrency(holding.unrealizedPnL)}
+                            <br />
+                            <span className="text-xs">
+                              {formatPercent(holding.unrealizedPnLPercent)}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {holding.isCollateral ? (
+                              <Badge variant="secondary" className="text-xs">Collateral</Badge>
+                            ) : (
+                              <Badge variant="default" className="text-xs">Regular</Badge>
+                            )}
+                          </td>
+                        </tr>
+                        {/* Bhavcopy Dropdown Row */}
+                        <tr>
+                          <td colSpan={9} className="p-0">
+                            <StockBhavcopyDropdown
+                              stockSymbol={holding.instrument}
+                              stockName={holding.instrument}
+                              isExpanded={expandedRows.has(holding.instrument)}
+                              onToggle={() => toggleRow(holding.instrument)}
+                            />
+                          </td>
+                        </tr>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
