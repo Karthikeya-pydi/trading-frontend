@@ -77,6 +77,20 @@ export const API_ENDPOINTS = {
   // Bhavcopy Data
   BHAVCOPY_DATA: '/api/market/bhavcopy',
   
+  // Returns Data (New endpoints)
+  RETURNS_STOCK: '/api/returns/stock',
+  RETURNS_ALL: '/api/returns/all',
+  RETURNS_SUMMARY: '/api/returns/summary',
+  RETURNS_SEARCH: '/api/returns/search',
+  RETURNS_TOP_PERFORMERS: '/api/returns/top-performers',
+  RETURNS_BOTTOM_PERFORMERS: '/api/returns/bottom-performers',
+  RETURNS_REFRESH: '/api/returns/refresh',
+  
+  // Portfolio Returns (Portfolio context)
+  PORTFOLIO_RETURNS_STOCK: '/api/portfolio/returns/stock',
+  PORTFOLIO_RETURNS_SUMMARY: '/api/portfolio/returns/summary',
+  PORTFOLIO_RETURNS_TOP_PERFORMERS: '/api/portfolio/returns/top-performers',
+  
   // IIFL Integration
   IIFL_MARKET_CREDENTIALS: '/api/iifl/credentials/market',
   IIFL_INTERACTIVE_CREDENTIALS: '/api/iifl/credentials/interactive',
