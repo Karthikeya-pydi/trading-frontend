@@ -106,19 +106,22 @@ export default function BhavcopyTab() {
   const filteredAndSortedData = useMemo(() => {
     if (!bhavcopyData?.data) return []
 
-    let filtered = bhavcopyData.data
+    // Filter out records with missing critical data
+    let filtered = bhavcopyData.data.filter(record => 
+      record && record.SYMBOL && record.SERIES
+    )
 
     // Apply sector filter
     if (selectedSector) {
-      filtered = filtered.filter(record => record.SECTOR === selectedSector)
+      filtered = filtered.filter(record => record.SECTOR && record.SECTOR === selectedSector)
     }
 
     // Apply search filter
     if (searchQuery.trim()) {
       filtered = filtered.filter(record => 
-        record.SYMBOL.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.SERIES.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.SECTOR.toLowerCase().includes(searchQuery.toLowerCase())
+        (record.SYMBOL && record.SYMBOL.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (record.SERIES && record.SERIES.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (record.SECTOR && record.SECTOR.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     }
 
@@ -126,6 +129,11 @@ export default function BhavcopyTab() {
     filtered.sort((a, b) => {
       const aValue = a[sortField]
       const bValue = b[sortField]
+      
+      // Handle null/undefined values
+      if (aValue == null && bValue == null) return 0
+      if (aValue == null) return sortDirection === 'asc' ? -1 : 1
+      if (bValue == null) return sortDirection === 'asc' ? 1 : -1
       
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return sortDirection === 'asc' 
@@ -144,10 +152,17 @@ export default function BhavcopyTab() {
   }, [bhavcopyData, searchQuery, sortField, sortDirection])
 
   // Pagination
-  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedData.length / itemsPerPage))
+  const startIndex = Math.max(0, (currentPage - 1) * itemsPerPage)
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredAndSortedData.length)
   const currentData = filteredAndSortedData.slice(startIndex, endIndex)
+
+  // Reset to page 1 if current page is no longer valid
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1)
+    }
+  }, [totalPages, currentPage])
 
   // Handle sort
   const handleSort = (field: keyof BhavcopyRecord) => {
@@ -168,6 +183,7 @@ export default function BhavcopyTab() {
 
   // Handle page change
   const goToPage = (page: number) => {
+    if (totalPages <= 0) return
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
 
@@ -179,12 +195,14 @@ export default function BhavcopyTab() {
   }, [bhavcopyData?.data])
 
   // Get change color and icon
-  const getChangeColor = (current: number, previous: number) => {
+  const getChangeColor = (current: number | null | undefined, previous: number | null | undefined) => {
+    if (current == null || previous == null || isNaN(current) || isNaN(previous)) return 'text-gray-600'
     const change = current - previous
     return change >= 0 ? 'text-green-600' : 'text-red-600'
   }
 
-  const getChangeIcon = (current: number, previous: number) => {
+  const getChangeIcon = (current: number | null | undefined, previous: number | null | undefined) => {
+    if (current == null || previous == null || isNaN(current) || isNaN(previous)) return <Activity className="h-4 w-4" />
     const change = current - previous
     return change >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />
   }
@@ -194,6 +212,18 @@ export default function BhavcopyTab() {
     if (value === '-' || value === null || value === undefined) return '-'
     if (typeof value === 'number') return value.toLocaleString()
     return value
+  }
+
+  // Safe number formatting
+  const safeNumberFormat = (value: number | null | undefined, decimals: number = 2) => {
+    if (value == null || isNaN(value)) return '-'
+    return value.toFixed(decimals)
+  }
+
+  // Safe locale string formatting
+  const safeLocaleString = (value: number | null | undefined) => {
+    if (value == null || isNaN(value)) return '-'
+    return value.toLocaleString()
   }
 
   // Auto-refresh on mount
@@ -217,7 +247,7 @@ export default function BhavcopyTab() {
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </div>
@@ -225,7 +255,7 @@ export default function BhavcopyTab() {
 
 
       {/* Sector Distribution Card */}
-      {bhavcopyData && (
+      {bhavcopyData && uniqueSectors.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -254,7 +284,7 @@ export default function BhavcopyTab() {
                   <div key={sector} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm font-medium text-gray-700 truncate">{sector}</span>
                     <Badge variant="secondary" className="text-xs">
-                      {count.toLocaleString()}
+                      {safeLocaleString(count)}
                     </Badge>
                   </div>
                 ))
@@ -265,7 +295,8 @@ export default function BhavcopyTab() {
       )}
 
       {/* Search Section */}
-      <Card>
+      {bhavcopyData && bhavcopyData.data && bhavcopyData.data.length > 0 && (
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Search className="h-5 w-5 text-blue-600" />
@@ -293,11 +324,15 @@ export default function BhavcopyTab() {
                   disabled={loading}
                 >
                   <option value="">All Sectors</option>
-                  {uniqueSectors.map((sector) => (
-                    <option key={sector} value={sector}>
-                      {sector}
-                    </option>
-                  ))}
+                  {uniqueSectors.length > 0 ? (
+                    uniqueSectors.map((sector) => (
+                      <option key={sector} value={sector}>
+                        {sector}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No sectors available</option>
+                  )}
                 </select>
               </div>
               <div className="md:col-span-2">
@@ -336,24 +371,29 @@ export default function BhavcopyTab() {
           </form>
         </CardContent>
       </Card>
-
-      {/* Alerts */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
       )}
 
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
+      {/* Alerts */}
+      {(error || success) && (
+        <>
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {success && (
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
+        </>
       )}
 
       {/* Data Table */}
-      {bhavcopyData && (
+      {bhavcopyData && filteredAndSortedData.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -361,7 +401,10 @@ export default function BhavcopyTab() {
               <span>Market Data Table</span>
             </CardTitle>
             <CardDescription>
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} records
+              {filteredAndSortedData.length > 0 
+                ? `Showing ${startIndex + 1}-${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} records`
+                : 'No records found'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -541,13 +584,13 @@ export default function BhavcopyTab() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentData.map((record, index) => (
-                    <tr key={`${record.SYMBOL}-${index}`} className="hover:bg-gray-50">
+                    <tr key={`${record.SYMBOL || 'unknown'}-${index}`} className="hover:bg-gray-50">
                       <td className="border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900">
-                        {record.SYMBOL}
+                        {record.SYMBOL || '-'}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         <Badge variant="outline" className="text-xs">
-                          {record.SERIES}
+                          {record.SERIES || '-'}
                         </Badge>
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
@@ -560,46 +603,46 @@ export default function BhavcopyTab() {
                         )}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {record.DATE1}
+                        {record.DATE1 || '-'}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        ₹{record.PREV_CLOSE.toFixed(2)}
+                        ₹{safeNumberFormat(record.PREV_CLOSE)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm">
                         <div className={`flex items-center space-x-1 ${getChangeColor(record.OPEN_PRICE, record.PREV_CLOSE)}`}>
                           {getChangeIcon(record.OPEN_PRICE, record.PREV_CLOSE)}
-                          <span>₹{record.OPEN_PRICE.toFixed(2)}</span>
+                          <span>₹{safeNumberFormat(record.OPEN_PRICE)}</span>
                         </div>
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-green-600 font-medium">
-                        ₹{record.HIGH_PRICE.toFixed(2)}
+                        ₹{safeNumberFormat(record.HIGH_PRICE)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-red-600 font-medium">
-                        ₹{record.LOW_PRICE.toFixed(2)}
+                        ₹{safeNumberFormat(record.LOW_PRICE)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm">
                         <div className={`flex items-center space-x-1 ${getChangeColor(record.LAST_PRICE, record.PREV_CLOSE)}`}>
                           {getChangeIcon(record.LAST_PRICE, record.PREV_CLOSE)}
-                          <span>₹{record.LAST_PRICE.toFixed(2)}</span>
+                          <span>₹{safeNumberFormat(record.LAST_PRICE)}</span>
                         </div>
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm">
                         <div className={`flex items-center space-x-1 ${getChangeColor(record.CLOSE_PRICE, record.PREV_CLOSE)}`}>
                           {getChangeIcon(record.CLOSE_PRICE, record.PREV_CLOSE)}
-                          <span className="font-medium">₹{record.CLOSE_PRICE.toFixed(2)}</span>
+                          <span className="font-medium">₹{safeNumberFormat(record.CLOSE_PRICE)}</span>
                         </div>
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        ₹{record.AVG_PRICE.toFixed(2)}
+                        ₹{safeNumberFormat(record.AVG_PRICE)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {record.TTL_TRD_QNTY.toLocaleString()}
+                        {safeLocaleString(record.TTL_TRD_QNTY)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        {record.NO_OF_TRADES.toLocaleString()}
+                        {safeLocaleString(record.NO_OF_TRADES)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                        ₹{record.TURNOVER_LACS.toFixed(2)} L
+                        ₹{safeNumberFormat(record.TURNOVER_LACS)} L
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
                         {formatDeliveryData(record.DELIV_QTY)}
@@ -614,10 +657,13 @@ export default function BhavcopyTab() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {totalPages > 1 && filteredAndSortedData.length > 0 && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-gray-700">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} results
+                  {filteredAndSortedData.length > 0 
+                    ? `Showing ${startIndex + 1} to ${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} results`
+                    : 'No results found'
+                  }
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button
@@ -688,7 +734,7 @@ export default function BhavcopyTab() {
       )}
 
       {/* Empty State */}
-      {!bhavcopyData && !loading && !error && (
+      {(!bhavcopyData || bhavcopyData.data.length === 0) && !loading && !error && (
         <Card>
           <CardContent className="text-center py-12">
             <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -702,14 +748,14 @@ export default function BhavcopyTab() {
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
-              Fetch Data
+              {loading ? 'Fetching...' : 'Fetch Data'}
             </Button>
           </CardContent>
         </Card>
       )}
 
       {/* Loading State */}
-      {loading && (
+      {loading && !bhavcopyData && (
         <Card>
           <CardContent className="text-center py-12">
             <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
