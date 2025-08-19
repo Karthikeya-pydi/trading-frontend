@@ -14,8 +14,11 @@ import {
   Bell,
   User,
   ChevronDown,
-  Search
+  Search,
+  Wallet
 } from "lucide-react"
+import { TradingService } from "@/services/trading.service"
+import { BalanceResponse } from "@/types"
 
 interface HeaderProps {
   toggleSidebar: () => void
@@ -27,6 +30,8 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
   const [scrolled, setScrolled] = useState(false)
   const [showAccountDropdown, setShowAccountDropdown] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [balance, setBalance] = useState<BalanceResponse | null>(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -51,6 +56,53 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showAccountDropdown])
+
+  // Fetch balance when dropdown opens
+  useEffect(() => {
+    if (showAccountDropdown && !balance) {
+      fetchBalance()
+    }
+  }, [showAccountDropdown, balance])
+
+  const fetchBalance = async () => {
+    setBalanceLoading(true)
+    try {
+      const balanceData = await TradingService.getBalance()
+      setBalance(balanceData)
+    } catch (err) {
+      console.error("Error fetching balance:", err)
+    } finally {
+      setBalanceLoading(false)
+    }
+  }
+
+  const formatCurrency = (value: string | number) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value
+    if (isNaN(numValue)) return "₹0"
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(numValue)
+  }
+
+  const getBalanceData = () => {
+    if (!balance?.balance?.result?.BalanceList?.[0]?.limitObject) {
+      return null
+    }
+
+    const balanceData = balance.balance.result.BalanceList[0].limitObject
+    return {
+      cashAvailable: parseFloat(balanceData.RMSSubLimits.cashAvailable) || 0,
+      netMarginAvailable: parseFloat(balanceData.RMSSubLimits.netMarginAvailable) || 0,
+      marginUtilized: parseFloat(balanceData.RMSSubLimits.marginUtilized) || 0,
+      accountId: balanceData.AccountID,
+      mtm: parseFloat(balanceData.RMSSubLimits.MTM) || 0,
+    }
+  }
+
+  const balanceData = getBalanceData()
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -139,7 +191,47 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
             </Button>
             
             {showAccountDropdown && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                {/* Balance Display Section */}
+                {balanceData && (
+                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Wallet className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium text-gray-900">Balance</span>
+                      </div>
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        {balanceData.accountId}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">Cash Available:</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatCurrency(balanceData.cashAvailable)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">Margin Available:</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatCurrency(balanceData.netMarginAvailable)}
+                        </span>
+                      </div>
+                      {balanceData.mtm !== 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">MTM:</span>
+                          <span className={`text-sm font-semibold ${
+                            balanceData.mtm > 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {formatCurrency(balanceData.mtm)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Menu Items */}
                 <div className="py-1">
                   <button
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
