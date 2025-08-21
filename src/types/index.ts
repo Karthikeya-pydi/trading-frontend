@@ -80,7 +80,7 @@ export interface Trade {
 }
 
 export interface Order {
-  order_id: string
+  order_id: string | number  // Allow both string and number types
   symbol: string
   quantity: number
   price: number

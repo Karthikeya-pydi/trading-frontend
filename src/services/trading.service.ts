@@ -54,6 +54,69 @@ export class TradingService {
     return response.json()
   }
 
+  // =============================================================================
+  // NEW TRADING ENDPOINTS
+  // =============================================================================
+
+  // Utility function to safely convert order_id to string
+  private static safeOrderIdToString(orderId: string | number): string {
+    return typeof orderId === 'number' ? orderId.toString() : orderId
+  }
+
+  // Search stocks
+  static async searchStocks(query: string, limit: number = 20): Promise<any> {
+    try {
+      console.log('🔍 TradingService - Searching stocks:', query)
+      const response = await this.apiCall<any>(`/api/trading/search-stocks?q=${encodeURIComponent(query)}&limit=${limit}`)
+      console.log('✅ TradingService - Stock search response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ TradingService - Error searching stocks:', error)
+      throw error
+    }
+  }
+
+  // Buy/Sell stock
+  static async placeTradeOrder(orderData: {
+    stock_symbol: string
+    quantity: number
+    price?: number
+    order_type: 'BUY' | 'SELL'
+  }): Promise<any> {
+    try {
+      console.log('🔍 TradingService - Placing trade order:', orderData)
+      const response = await this.apiCall<any>('/api/trading/buy-stock', 'POST', orderData)
+      
+      // Ensure order_id is properly converted to string if it's a number
+      if (response && response.order_id) {
+        response.order_id = this.safeOrderIdToString(response.order_id)
+      }
+      
+      console.log('✅ TradingService - Trade order response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ TradingService - Error placing trade order:', error)
+      throw error
+    }
+  }
+
+  // Get stock quote
+  static async getStockQuote(symbol: string): Promise<any> {
+    try {
+      console.log('🔍 TradingService - Getting stock quote:', symbol)
+      const response = await this.apiCall<any>(`/api/trading/stock-quote/${symbol}`)
+      console.log('✅ TradingService - Stock quote response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ TradingService - Error getting stock quote:', error)
+      throw error
+    }
+  }
+
+  // =============================================================================
+  // EXISTING ENDPOINTS
+  // =============================================================================
+
   // API Keys Management
   static async saveApiKeys(keys: ApiKeys): Promise<any> {
     return this.apiCall(API_ENDPOINTS.SET_IIFL_CREDENTIALS, 'POST', keys)

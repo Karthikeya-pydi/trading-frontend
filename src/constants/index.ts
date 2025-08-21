@@ -6,6 +6,7 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   SETUP: '/setup',
   MARKET: '/market',
+  TRADING: '/trading',
   AUTH_CALLBACK: '/auth/callback'
 } as const
 
@@ -53,6 +54,11 @@ export const API_ENDPOINTS = {
   CANCEL_ORDER: '/api/trading/orders',  // Used with /{order_id}/cancel
   MODIFY_ORDER: '/api/trading/orders',  // Used with /{order_id}/modify
   SQUARE_OFF: '/api/trading/positions', // Used with /{position_id}/square-off
+  
+  // New Trading Endpoints
+  TRADING_SEARCH_STOCKS: '/api/trading/search-stocks',
+  TRADING_BUY_STOCK: '/api/trading/buy-stock',
+  TRADING_STOCK_QUOTE: '/api/trading/stock-quote',
   
   // Portfolio (Updated to match backend)
   PORTFOLIO_SUMMARY: '/api/portfolio/summary',
@@ -126,4 +132,14 @@ export const MARKET_CONFIG = {
   REALTIME_UPDATE_INTERVAL: 5000, // 5 seconds
   MAX_WATCHLIST_ITEMS: 50,
   SEARCH_DEBOUNCE_MS: 300
+} as const
+
+export const TRADING_CONFIG = {
+  DEFAULT_QUANTITY: 1,
+  MIN_QUANTITY: 1,
+  MAX_QUANTITY: 1000000,
+  PRICE_PRECISION: 2,
+  QUANTITY_PRECISION: 0,
+  AUTO_REFRESH_INTERVAL: 30000, // 30 seconds
+  ORDER_CONFIRMATION_TIMEOUT: 10000 // 10 seconds
 } as const 

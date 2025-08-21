@@ -434,7 +434,7 @@ export default function ReturnsTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
+            <Building2 className="h-5 w-5 text-teal-600" />
             <span>Nifty Indices Analysis</span>
           </CardTitle>
           <CardDescription>
@@ -481,28 +481,22 @@ export default function ReturnsTab() {
             )}
 
             {niftyLoading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mr-3" />
-                <span className="text-gray-600">Loading index data...</span>
-              </div>
+                          <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-teal-600 mr-3" />
+              <span className="text-gray-600">Loading index data...</span>
+            </div>
             )}
 
             {niftyIndexData && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="text-sm font-medium text-blue-600">Index Name</div>
-                    <div className="text-lg font-semibold text-blue-900">{niftyIndexData.index_name}</div>
+                  <div className="bg-teal-50 p-4 rounded-lg">
+                    <div className="text-sm font-medium text-teal-600">Index Name</div>
+                    <div className="text-lg font-semibold text-teal-900">{niftyIndexData.index_name}</div>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <div className="text-sm font-medium text-green-600">Total Constituents</div>
                     <div className="text-lg font-semibold text-green-900">{niftyIndexData.total_constituents}</div>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="text-sm font-medium text-purple-600">Last Updated</div>
-                    <div className="text-lg font-semibold text-purple-900">
-                      {new Date(niftyIndexData.last_updated * 1000).toLocaleDateString()}
-                    </div>
                   </div>
                 </div>
 
@@ -618,7 +612,7 @@ export default function ReturnsTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Search className="h-5 w-5 text-blue-600" />
+            <Search className="h-5 w-5 text-teal-600" />
             <span>Search & Filter</span>
           </CardTitle>
                      <CardDescription>
@@ -629,40 +623,40 @@ export default function ReturnsTab() {
            <div className="space-y-4">
              {/* Filter Summary */}
              {selectedIndex && (
-               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                 <div className="flex items-center justify-between">
-                   <div className="flex items-center space-x-2">
-                     <Building2 className="h-4 w-4 text-blue-600" />
-                     <span className="text-sm font-medium text-blue-900">
-                       Filtered by: <span className="font-semibold">{selectedIndex}</span>
-                     </span>
-                     <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                       {filteredAndSortedData.length} stocks
-                     </Badge>
+                                <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                       <Building2 className="h-4 w-4 text-teal-600" />
+                       <span className="text-sm font-medium text-teal-900">
+                         Filtered by: <span className="font-semibold">{selectedIndex}</span>
+                       </span>
+                       <Badge variant="secondary" className="bg-teal-100 text-teal-800">
+                         {filteredAndSortedData.length} stocks
+                       </Badge>
+                     </div>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => {
+                         setSelectedIndex("")
+                         setNiftyIndexData(null)
+                         setCurrentPage(1)
+                       }}
+                       className="text-teal-600 border-teal-300 hover:bg-teal-100"
+                     >
+                       Clear Filter
+                     </Button>
                    </div>
-                   <Button
-                     variant="outline"
-                     size="sm"
-                     onClick={() => {
-                       setSelectedIndex("")
-                       setNiftyIndexData(null)
-                       setCurrentPage(1)
-                     }}
-                     className="text-blue-600 border-blue-300 hover:bg-blue-100"
-                   >
-                     Clear Filter
-                   </Button>
+                   {niftyIndexData ? (
+                     <p className="text-xs text-teal-700 mt-2">
+                       Showing returns data for stocks that are constituents of {selectedIndex}
+                     </p>
+                   ) : (
+                     <p className="text-xs text-orange-700 mt-2">
+                       ⚠️ Index data not available - showing all stocks (filter not applied)
+                     </p>
+                   )}
                  </div>
-                 {niftyIndexData ? (
-                   <p className="text-xs text-blue-700 mt-2">
-                     Showing returns data for stocks that are constituents of {selectedIndex}
-                   </p>
-                 ) : (
-                   <p className="text-xs text-orange-700 mt-2">
-                     ⚠️ Index data not available - showing all stocks (filter not applied)
-                   </p>
-                 )}
-               </div>
              )}
 
              {/* Search Form */}
@@ -721,9 +715,9 @@ export default function ReturnsTab() {
                <Activity className="h-5 w-5 text-green-600" />
                <span>Stock Returns Data</span>
                {selectedIndex && (
-                 <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
-                   {selectedIndex}
-                 </Badge>
+                                <Badge variant="outline" className="ml-2 bg-teal-50 text-teal-700 border-teal-200">
+                 {selectedIndex}
+               </Badge>
                )}
              </CardTitle>
                          <CardDescription>
@@ -951,7 +945,7 @@ export default function ReturnsTab() {
       {loading && (
         <Card>
           <CardContent className="text-center py-12">
-            <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Returns Data</h3>
             <p className="text-gray-600">Please wait while we fetch the latest stock returns data...</p>
           </CardContent>

@@ -26,8 +26,7 @@ const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Stocks", href: "/stocks", icon: Search },
   { title: "Watchlist", href: "/wishlist", icon: Eye },
-  { title: "Trade", href: "/trade", icon: TrendingUp },
-  { title: "History", href: "/history", icon: Clock },
+  { title: "Trading", href: "/trading", icon: TrendingUp },
   { title: "Analysis", href: "/analysis", icon: BarChart3 },
   { title: "Support", href: "/support", icon: HelpCircle },
 ]
