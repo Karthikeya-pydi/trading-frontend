@@ -21,9 +21,17 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Award
+  Award,
+  Building2
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // Returns data types
 interface StockReturns {
@@ -50,6 +58,41 @@ interface ReturnsResponse {
   timestamp: string
 }
 
+// Nifty indices data types
+interface NiftyIndex {
+  filename: string
+  index_name: string
+  file_size_bytes: number
+  last_modified: number
+  file_path: string
+}
+
+interface NiftyIndicesResponse {
+  message: string
+  indices: NiftyIndex[]
+  total_count: number
+  folder_path: string
+}
+
+interface NiftyIndexData {
+  message: string
+  index_name: string
+  filename: string
+  total_constituents: number
+  file_size_bytes: number
+  last_updated: number
+  columns: string[]
+  data: Array<Record<string, string | number>>
+}
+
+interface NiftyIndexConstituentsResponse {
+  message: string
+  index_name: string
+  total_constituents: number
+  limit_applied: number | null
+  constituents: Array<Record<string, string | number>>
+}
+
 export default function ReturnsTab() {
   const [returnsData, setReturnsData] = useState<ReturnsResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -61,6 +104,17 @@ export default function ReturnsTab() {
   const [sortField, setSortField] = useState<keyof StockReturns>("symbol")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
+  // Nifty indices state
+  const [niftyIndices, setNiftyIndices] = useState<NiftyIndex[]>([])
+  const [selectedIndex, setSelectedIndex] = useState<string>("")
+  const [niftyIndexData, setNiftyIndexData] = useState<NiftyIndexData | null>(null)
+  const [niftyLoading, setNiftyLoading] = useState(false)
+  const [niftyError, setNiftyError] = useState("")
+  
+  // Nifty indices pagination
+  const [niftyCurrentPage, setNiftyCurrentPage] = useState(1)
+  const [niftyItemsPerPage] = useState(20)
+
   // Available time periods
   const timePeriods = [
     { key: "1_Week", label: "1 Week" },
@@ -71,6 +125,83 @@ export default function ReturnsTab() {
     { key: "3_Years", label: "3 Years" },
     { key: "5_Years", label: "5 Years" }
   ]
+
+  // Fetch Nifty indices from API
+  const fetchNiftyIndices = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.NIFTY_INDICES}`, {
+        headers
+      })
+
+      const data: NiftyIndicesResponse = await response.json()
+
+      if (response.ok) {
+        setNiftyIndices(data.indices)
+        setNiftyError("")
+      } else {
+        setNiftyError(data.message || "Failed to fetch Nifty indices")
+        setNiftyIndices([])
+      }
+    } catch (err) {
+      console.error('Error fetching Nifty indices:', err)
+      setNiftyError(`Failed to fetch Nifty indices: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setNiftyIndices([])
+    }
+  }, [])
+
+  // Fetch specific Nifty index data
+  const fetchNiftyIndexData = useCallback(async (indexName: string) => {
+    if (!indexName) return
+
+    setNiftyLoading(true)
+    setNiftyError("")
+    setNiftyIndexData(null)
+
+    try {
+      const token = localStorage.getItem('token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.NIFTY_INDEX_DATA}/${encodeURIComponent(indexName)}`, {
+        headers
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setNiftyError(`Index data not found for "${indexName}". This index may not be available in the database.`)
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          setNiftyError(errorData.message || `Failed to fetch index data (${response.status})`)
+        }
+        setNiftyIndexData(null)
+        return
+      }
+
+      const data: NiftyIndexData = await response.json()
+      setNiftyIndexData(data)
+      setNiftyError("")
+    } catch (err) {
+      console.error('Error fetching Nifty index data:', err)
+      setNiftyError(`Failed to fetch index data: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setNiftyIndexData(null)
+    } finally {
+      setNiftyLoading(false)
+    }
+  }, [])
 
   // Fetch returns data from API
   const fetchReturnsData = useCallback(async () => {
@@ -116,6 +247,50 @@ export default function ReturnsTab() {
 
     let filtered = returnsData.data
 
+    // Apply Nifty index filter
+    if (selectedIndex && niftyIndexData?.data) {
+      const indexSymbols = niftyIndexData.data.map(row => {
+        // Try multiple possible column names for symbol
+        const possibleSymbolColumns = [
+          'symbol', 'ticker', 'scrip', 'scrip_code', 'instrument', 'name',
+          'SYMBOL', 'TICKER', 'SCRIP', 'SCRIP_CODE', 'INSTRUMENT', 'NAME'
+        ]
+        
+        for (const colName of possibleSymbolColumns) {
+          if (niftyIndexData.columns.includes(colName) && row[colName]) {
+            const value = String(row[colName]).trim()
+            if (value && value !== 'null' && value !== 'undefined') {
+              return value.toUpperCase()
+            }
+          }
+        }
+        
+        // If no exact match, try partial matches
+        const symbolColumn = niftyIndexData.columns.find(col => 
+          col.toLowerCase().includes('symbol') || 
+          col.toLowerCase().includes('ticker') ||
+          col.toLowerCase().includes('scrip') ||
+          col.toLowerCase().includes('instrument')
+        )
+        
+        if (symbolColumn && row[symbolColumn]) {
+          const value = String(row[symbolColumn]).trim()
+          if (value && value !== 'null' && value !== 'undefined') {
+            return value.toUpperCase()
+          }
+        }
+        
+        return null
+      }).filter(Boolean)
+
+      if (indexSymbols.length > 0) {
+        console.log(`Filtering by ${indexSymbols.length} symbols from ${selectedIndex}:`, indexSymbols.slice(0, 10))
+        filtered = filtered.filter(record => 
+          indexSymbols.includes(record.symbol.toUpperCase())
+        )
+      }
+    }
+
     // Apply search filter
     if (searchQuery.trim()) {
       filtered = filtered.filter(record => 
@@ -144,13 +319,19 @@ export default function ReturnsTab() {
     })
 
     return filtered
-  }, [returnsData, searchQuery, sortField, sortDirection])
+  }, [returnsData, selectedIndex, niftyIndexData, searchQuery, sortField, sortDirection])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const currentData = filteredAndSortedData.slice(startIndex, endIndex)
+
+  // Nifty indices pagination
+  const niftyTotalPages = Math.ceil((niftyIndexData?.data.length || 0) / niftyItemsPerPage)
+  const niftyStartIndex = (niftyCurrentPage - 1) * niftyItemsPerPage
+  const niftyEndIndex = niftyStartIndex + niftyItemsPerPage
+  const currentNiftyData = niftyIndexData?.data.slice(niftyStartIndex, niftyEndIndex) || []
 
   // Handle sort
   const handleSort = (field: keyof StockReturns) => {
@@ -172,6 +353,11 @@ export default function ReturnsTab() {
   // Handle page change
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
+  }
+
+  // Handle Nifty indices page change
+  const goToNiftyPage = (page: number) => {
+    setNiftyCurrentPage(Math.max(1, Math.min(page, niftyTotalPages)))
   }
 
   // Get return value for selected period
@@ -205,10 +391,23 @@ export default function ReturnsTab() {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
   }
 
+  // Handle index selection change
+  const handleIndexChange = (indexName: string) => {
+    setSelectedIndex(indexName)
+    setNiftyCurrentPage(1) // Reset to first page when selecting new index
+    setCurrentPage(1) // Reset stock returns pagination when filter changes
+    if (indexName) {
+      fetchNiftyIndexData(indexName)
+    } else {
+      setNiftyIndexData(null)
+    }
+  }
+
   // Auto-refresh on mount
   useEffect(() => {
     fetchReturnsData()
-  }, [fetchReturnsData])
+    fetchNiftyIndices()
+  }, [fetchReturnsData, fetchNiftyIndices])
 
   return (
     <div className="space-y-6">
@@ -231,6 +430,190 @@ export default function ReturnsTab() {
         </div>
       </div>
 
+      {/* Nifty Indices Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Building2 className="h-5 w-5 text-blue-600" />
+            <span>Nifty Indices Analysis</span>
+          </CardTitle>
+          <CardDescription>
+            Select a Nifty index to view its constituent stocks and performance data
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+                         <div className="flex flex-col sm:flex-row gap-4">
+               <div className="flex-1">
+                 <Label htmlFor="nifty-index-select" className="mb-2 block">Select Nifty Index</Label>
+                 <Select value={selectedIndex} onValueChange={handleIndexChange}>
+                  <SelectTrigger id="nifty-index-select" className="w-full">
+                    <SelectValue placeholder="Choose a Nifty index..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                                         {niftyIndices.map((index, idx) => (
+                       <SelectItem key={`index-${index.filename || index.index_name || idx}`} value={index.index_name}>
+                         {index.index_name}
+                       </SelectItem>
+                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button
+                  onClick={fetchNiftyIndices}
+                  variant="outline"
+                  size="sm"
+                  disabled={niftyLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${niftyLoading ? "animate-spin" : ""}`} />
+                  Refresh Indices
+                </Button>
+              </div>
+            </div>
+
+            {/* Nifty Index Data Display */}
+            {niftyError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{niftyError}</AlertDescription>
+              </Alert>
+            )}
+
+            {niftyLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mr-3" />
+                <span className="text-gray-600">Loading index data...</span>
+              </div>
+            )}
+
+            {niftyIndexData && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="text-sm font-medium text-blue-600">Index Name</div>
+                    <div className="text-lg font-semibold text-blue-900">{niftyIndexData.index_name}</div>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="text-sm font-medium text-green-600">Total Constituents</div>
+                    <div className="text-lg font-semibold text-green-900">{niftyIndexData.total_constituents}</div>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <div className="text-sm font-medium text-purple-600">Last Updated</div>
+                    <div className="text-lg font-semibold text-purple-900">
+                      {new Date(niftyIndexData.last_updated * 1000).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                                 {/* Constituents Table */}
+                 <div className="space-y-4">
+                   <div className="text-sm text-gray-600">
+                     Showing {niftyStartIndex + 1}-{Math.min(niftyEndIndex, niftyIndexData.data.length)} of {niftyIndexData.data.length} constituents
+                   </div>
+                   
+                   <div className="overflow-x-auto">
+                     <table className="w-full border-collapse border border-gray-200">
+                       <thead>
+                         <tr className="bg-gray-50">
+                                                       {niftyIndexData.columns.map((column) => (
+                              <th key={`nifty-header-${column}`} className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {column}
+                              </th>
+                            ))}
+                         </tr>
+                       </thead>
+                                               <tbody className="bg-white divide-y divide-gray-200">
+                          {currentNiftyData.map((row, index) => (
+                            <tr key={`nifty-${index}`} className="hover:bg-gray-50">
+                              {niftyIndexData.columns.map((column) => (
+                                <td key={`${index}-${column}`} className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
+                                  {row[column]}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                     </table>
+                   </div>
+
+                   {/* Nifty Indices Pagination */}
+                   {niftyTotalPages > 1 && (
+                     <div className="flex items-center justify-between">
+                       <div className="text-sm text-gray-700">
+                         Page {niftyCurrentPage} of {niftyTotalPages}
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => goToNiftyPage(1)}
+                           disabled={niftyCurrentPage === 1}
+                         >
+                           <ChevronsLeft className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => goToNiftyPage(niftyCurrentPage - 1)}
+                           disabled={niftyCurrentPage === 1}
+                         >
+                           <ChevronLeft className="h-4 w-4" />
+                         </Button>
+                         
+                         <div className="flex items-center space-x-1">
+                           {Array.from({ length: Math.min(5, niftyTotalPages) }, (_, i) => {
+                             let pageNum
+                             if (niftyTotalPages <= 5) {
+                               pageNum = i + 1
+                             } else if (niftyCurrentPage <= 3) {
+                               pageNum = i + 1
+                             } else if (niftyCurrentPage >= niftyTotalPages - 2) {
+                               pageNum = niftyTotalPages - 4 + i
+                             } else {
+                               pageNum = niftyCurrentPage - 2 + i
+                             }
+                             
+                             return (
+                               <Button
+                                 key={`nifty-page-${pageNum}`}
+                                 variant={niftyCurrentPage === pageNum ? "default" : "outline"}
+                                 size="sm"
+                                 onClick={() => goToNiftyPage(pageNum)}
+                                 className="w-8 h-8 p-0"
+                               >
+                                 {pageNum}
+                               </Button>
+                             )
+                           })}
+                         </div>
+                         
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => goToNiftyPage(niftyCurrentPage + 1)}
+                           disabled={niftyCurrentPage === niftyTotalPages}
+                         >
+                           <ChevronRight className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => goToNiftyPage(niftyTotalPages)}
+                           disabled={niftyCurrentPage === niftyTotalPages}
+                         >
+                           <ChevronsRight className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </div>
+                   )}
+                 </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Search Section */}
       <Card>
         <CardHeader>
@@ -238,12 +621,52 @@ export default function ReturnsTab() {
             <Search className="h-5 w-5 text-blue-600" />
             <span>Search & Filter</span>
           </CardTitle>
-          <CardDescription>
-            Search by symbol, fincode, or ISIN, and sort by any column
-          </CardDescription>
+                     <CardDescription>
+             Search by symbol, fincode, or ISIN, and filter by Nifty indices
+           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="space-y-4">
+                 <CardContent>
+           <div className="space-y-4">
+             {/* Filter Summary */}
+             {selectedIndex && (
+               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center space-x-2">
+                     <Building2 className="h-4 w-4 text-blue-600" />
+                     <span className="text-sm font-medium text-blue-900">
+                       Filtered by: <span className="font-semibold">{selectedIndex}</span>
+                     </span>
+                     <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                       {filteredAndSortedData.length} stocks
+                     </Badge>
+                   </div>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => {
+                       setSelectedIndex("")
+                       setNiftyIndexData(null)
+                       setCurrentPage(1)
+                     }}
+                     className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                   >
+                     Clear Filter
+                   </Button>
+                 </div>
+                 {niftyIndexData ? (
+                   <p className="text-xs text-blue-700 mt-2">
+                     Showing returns data for stocks that are constituents of {selectedIndex}
+                   </p>
+                 ) : (
+                   <p className="text-xs text-orange-700 mt-2">
+                     ⚠️ Index data not available - showing all stocks (filter not applied)
+                   </p>
+                 )}
+               </div>
+             )}
+
+             {/* Search Form */}
+             <form onSubmit={handleSearch} className="space-y-4">
             <div className="flex space-x-2">
               <Input
                 placeholder="Search by symbol, fincode, or ISIN (e.g., RELIANCE, 500325, INE002A01018)"
@@ -269,9 +692,10 @@ export default function ReturnsTab() {
                   Clear
                 </Button>
               )}
-            </div>
-          </form>
-        </CardContent>
+                           </div>
+             </form>
+           </div>
+         </CardContent>
       </Card>
 
       {/* Alerts */}
@@ -293,16 +717,69 @@ export default function ReturnsTab() {
       {returnsData && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-green-600" />
-              <span>Stock Returns Data</span>
-            </CardTitle>
-            <CardDescription>
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} records
-            </CardDescription>
+                         <CardTitle className="flex items-center space-x-2">
+               <Activity className="h-5 w-5 text-green-600" />
+               <span>Stock Returns Data</span>
+               {selectedIndex && (
+                 <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                   {selectedIndex}
+                 </Badge>
+               )}
+             </CardTitle>
+                         <CardDescription>
+               {selectedIndex ? (
+                 <>
+                   Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} stocks from {selectedIndex}
+                   {returnsData.data.length !== filteredAndSortedData.length && (
+                     <span className="text-gray-500 ml-2">
+                       (filtered from {returnsData.data.length} total stocks)
+                     </span>
+                   )}
+                 </>
+               ) : (
+                 `Showing ${startIndex + 1}-${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} records`
+               )}
+             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
+                     <CardContent>
+             {/* No Results Message */}
+             {filteredAndSortedData.length === 0 && selectedIndex && (
+               <div className="text-center py-8">
+                 <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No Stocks Found</h3>
+                 <p className="text-gray-600 mb-4">
+                   No stock returns data found for the selected Nifty index "{selectedIndex}".
+                   {!niftyIndexData ? "Index data could not be loaded." : "This might be due to symbol naming differences."}
+                 </p>
+                 {!niftyIndexData ? (
+                   <ul className="text-sm text-gray-600 text-left max-w-md mx-auto space-y-1">
+                     <li>• Index data not available in the database</li>
+                     <li>• API endpoint returned 404 error</li>
+                     <li>• Network connectivity issues</li>
+                   </ul>
+                 ) : (
+                   <ul className="text-sm text-gray-600 text-left max-w-md mx-auto space-y-1">
+                     <li>• Symbol naming differences between index and returns data</li>
+                     <li>• No matching stocks in the returns database</li>
+                     <li>• Data synchronization issues</li>
+                   </ul>
+                 )}
+                 <Button
+                   variant="outline"
+                   onClick={() => {
+                     setSelectedIndex("")
+                     setNiftyIndexData(null)
+                   }}
+                   className="mt-4"
+                 >
+                   Clear Filter
+                 </Button>
+               </div>
+             )}
+
+             {/* Data Table */}
+             {filteredAndSortedData.length > 0 && (
+               <div className="overflow-x-auto">
               <table className="w-full border-collapse border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50">
@@ -326,12 +803,12 @@ export default function ReturnsTab() {
                     <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Volume
                     </th>
-                    {timePeriods.map((period) => (
-                      <th 
-                        key={period.key}
-                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort(`returns_${period.key.toLowerCase()}` as keyof StockReturns)}
-                      >
+                                         {timePeriods.map((period) => (
+                       <th 
+                         key={`header-${period.key}`}
+                         className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                         onClick={() => handleSort(`returns_${period.key.toLowerCase()}` as keyof StockReturns)}
+                       >
                         <div className="flex items-center space-x-1">
                           <span>{period.label}</span>
                           {sortField === `returns_${period.key.toLowerCase()}` && (
@@ -342,9 +819,9 @@ export default function ReturnsTab() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentData.map((record, index) => (
-                    <tr key={`${record.symbol}-${index}`} className="hover:bg-gray-50">
+                                 <tbody className="bg-white divide-y divide-gray-200">
+                   {currentData.map((record, index) => (
+                     <tr key={`returns-${record.symbol}-${index}`} className="hover:bg-gray-50">
                       <td className="border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900">
                         {record.symbol}
                       </td>
@@ -357,10 +834,10 @@ export default function ReturnsTab() {
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {record.latest_volume.toLocaleString()}
                       </td>
-                      {timePeriods.map((period) => {
-                        const returnValue = getReturnValue(record, period.key)
-                        return (
-                          <td key={period.key} className="border border-gray-200 px-3 py-2 text-sm">
+                                             {timePeriods.map((period) => {
+                         const returnValue = getReturnValue(record, period.key)
+                         return (
+                           <td key={`${record.symbol}-${period.key}`} className="border border-gray-200 px-3 py-2 text-sm">
                             <div className={`flex items-center space-x-1 ${getReturnColor(returnValue)}`}>
                               {getReturnIcon(returnValue)}
                               <span className="font-medium">{formatReturn(returnValue)}</span>
@@ -371,10 +848,11 @@ export default function ReturnsTab() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+                             </table>
+             </div>
+             )}
 
-            {/* Pagination */}
+             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-gray-700">
@@ -411,17 +889,17 @@ export default function ReturnsTab() {
                         pageNum = currentPage - 2 + i
                       }
                       
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => goToPage(pageNum)}
-                          className="w-8 h-8 p-0"
-                        >
-                          {pageNum}
-                        </Button>
-                      )
+                                                   return (
+                               <Button
+                                 key={`page-${pageNum}`}
+                                 variant={currentPage === pageNum ? "default" : "outline"}
+                                 size="sm"
+                                 onClick={() => goToPage(pageNum)}
+                                 className="w-8 h-8 p-0"
+                               >
+                                 {pageNum}
+                               </Button>
+                             )
                     })}
                   </div>
                   

@@ -77,6 +77,11 @@ export const API_ENDPOINTS = {
   // Bhavcopy Data
   BHAVCOPY_DATA: '/api/market/bhavcopy',
   
+  // Nifty Indices Data
+  NIFTY_INDICES: '/api/market/nifty/indices',
+  NIFTY_INDEX_DATA: '/api/market/nifty',
+  NIFTY_INDEX_CONSTITUENTS: '/api/market/nifty',
+  
   // Returns Data (New endpoints)
   RETURNS_STOCK: '/api/returns/stock',
   RETURNS_ALL: '/api/returns/all',
