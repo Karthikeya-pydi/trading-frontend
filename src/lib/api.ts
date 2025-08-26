@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://13.203.222.58:8000'
 
 export const api = {
   // Get Google OAuth URL with callback

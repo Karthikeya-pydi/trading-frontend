@@ -11,7 +11,7 @@ export async function GET(
     const authHeader = request.headers.get('authorization')
     
     // Make request to your backend API
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://13.203.222.58:8000'
     const response = await fetch(`${backendUrl}/api/market/stock/${stockName}`, {
       headers: {
         'Content-Type': 'application/json',
