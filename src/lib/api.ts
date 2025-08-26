@@ -50,4 +50,59 @@ export const api = {
     })
     return response.json()
   },
+
+  // Stock Screening APIs
+  searchStocks: async (query: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/screening/search`, {
+      method: "POST",
+      headers: { 
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Content-Type": "application/json" 
+      },
+      body: JSON.stringify({ query }),
+    })
+    return response.json()
+  },
+
+  scrapeStock: async (stockSymbol: string, stockName: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/screening/scrape`, {
+      method: "POST",
+      headers: { 
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Content-Type": "application/json" 
+      },
+      body: JSON.stringify({ stock_symbol: stockSymbol, stock_name: stockName }),
+    })
+    return response.json()
+  },
+
+  getStockData: async (stockSymbol: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/screening/${stockSymbol}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    return response.json()
+  },
+
+  listStocks: async (skip = 0, limit = 100) => {
+    const response = await fetch(`${API_BASE_URL}/api/screening/?skip=${skip}&limit=${limit}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    return response.json()
+  },
+
+  refreshStockData: async (stockSymbol: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/screening/${stockSymbol}/refresh`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    return response.json()
+  },
+
+  deleteStockData: async (stockSymbol: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/screening/${stockSymbol}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    return response.json()
+  },
 }

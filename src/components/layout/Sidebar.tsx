@@ -14,7 +14,8 @@ import {
   HelpCircle,
   Menu,
   X,
-  Search
+  Search,
+  Filter
 } from "lucide-react"
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ const navItems = [
   { title: "Stocks", href: "/stocks", icon: Search },
   { title: "Watchlist", href: "/wishlist", icon: Eye },
   { title: "Trading", href: "/trading", icon: TrendingUp },
+  { title: "Screener", href: "/screener", icon: Filter },
   { title: "Analysis", href: "/analysis", icon: BarChart3 },
   { title: "Support", href: "/support", icon: HelpCircle },
 ]
