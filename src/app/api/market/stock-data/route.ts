@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     
     // Make request to your backend API
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://13.203.222.58:8000'
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
     const response = await fetch(`${backendUrl}/api/market/stock-data`, {
       method: 'POST',
       headers: {
