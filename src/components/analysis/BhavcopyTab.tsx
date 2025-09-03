@@ -28,7 +28,6 @@ import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 interface BhavcopyRecord {
   SYMBOL: string
   SERIES: string
-  SECTOR: string
   DATE1: string
   PREV_CLOSE: number
   OPEN_PRICE: number
@@ -57,7 +56,7 @@ export default function BhavcopyTab() {
   const [success, setSuccess] = useState("")
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedSector, setSelectedSector] = useState<string>("")
+
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(50)
   const [sortField, setSortField] = useState<keyof BhavcopyRecord>("SYMBOL")
@@ -111,17 +110,13 @@ export default function BhavcopyTab() {
       record && record.SYMBOL && record.SERIES
     )
 
-    // Apply sector filter
-    if (selectedSector) {
-      filtered = filtered.filter(record => record.SECTOR && record.SECTOR === selectedSector)
-    }
+
 
     // Apply search filter
     if (searchQuery.trim()) {
       filtered = filtered.filter(record => 
         (record.SYMBOL && record.SYMBOL.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (record.SERIES && record.SERIES.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (record.SECTOR && record.SECTOR.toLowerCase().includes(searchQuery.toLowerCase()))
+        (record.SERIES && record.SERIES.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     }
 
@@ -187,12 +182,7 @@ export default function BhavcopyTab() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
 
-  // Get unique sectors for filter dropdown
-  const uniqueSectors = useMemo(() => {
-    if (!bhavcopyData?.data) return []
-    const sectors = [...new Set(bhavcopyData.data.map(record => record.SECTOR).filter(Boolean))]
-    return sectors.sort()
-  }, [bhavcopyData?.data])
+
 
   // Get change color and icon
   const getChangeColor = (current: number | null | undefined, previous: number | null | undefined) => {
@@ -254,95 +244,31 @@ export default function BhavcopyTab() {
 
 
 
-      {/* Sector Distribution Card */}
-      {bhavcopyData && uniqueSectors.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5 text-purple-600" />
-              <span>Top Sectors</span>
-            </CardTitle>
-            <CardDescription>
-              Distribution of stocks by sector
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(() => {
-                const sectorCounts = bhavcopyData.data.reduce((acc, record) => {
-                  if (record.SECTOR) {
-                    acc[record.SECTOR] = (acc[record.SECTOR] || 0) + 1
-                  }
-                  return acc
-                }, {} as Record<string, number>)
-                
-                const topSectors = Object.entries(sectorCounts)
-                  .sort(([,a], [,b]) => b - a)
-                  .slice(0, 9)
-                
-                return topSectors.map(([sector, count]) => (
-                  <div key={sector} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700 truncate">{sector}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {safeLocaleString(count)}
-                    </Badge>
-                  </div>
-                ))
-              })()}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Search Section */}
       {bhavcopyData && bhavcopyData.data && bhavcopyData.data.length > 0 && (
         <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Search className="h-5 w-5 text-blue-600" />
+            <Search className="h-5 w-5 text-teal-600" />
             <span>Search & Filter</span>
           </CardTitle>
           <CardDescription>
-            Search by symbol, series, or sector, and sort by any column
+            Search by symbol or series, and sort by any column
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSearch} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
-                <Label htmlFor="sector-filter" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Filter by Sector
-                </Label>
-                <select
-                  id="sector-filter"
-                  value={selectedSector}
-                  onChange={(e) => {
-                    setSelectedSector(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  disabled={loading}
-                >
-                  <option value="">All Sectors</option>
-                  {uniqueSectors.length > 0 ? (
-                    uniqueSectors.map((sector) => (
-                      <option key={sector} value={sector}>
-                        {sector}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="" disabled>No sectors available</option>
-                  )}
-                </select>
-              </div>
-              <div className="md:col-span-2">
                 <Label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-2 block">
                   Search
                 </Label>
                 <div className="flex space-x-2">
                   <Input
                     id="search-input"
-                    placeholder="Search by symbol, series, or sector (e.g., RELIANCE, EQ, Banking)"
+                    placeholder="Search by symbol or series (e.g., RELIANCE, EQ)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     disabled={loading}
@@ -351,12 +277,11 @@ export default function BhavcopyTab() {
                     <Search className="h-4 w-4 mr-2" />
                     Search
                   </Button>
-                  {(selectedSector || searchQuery) && (
+                  {searchQuery && (
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => {
-                        setSelectedSector("")
                         setSearchQuery("")
                         setCurrentPage(1)
                       }}
@@ -434,17 +359,7 @@ export default function BhavcopyTab() {
                         )}
                       </div>
                     </th>
-                    <th 
-                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("SECTOR")}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Sector</span>
-                        {sortField === "SECTOR" && (
-                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
-                        )}
-                      </div>
-                    </th>
+
                     <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
@@ -593,15 +508,7 @@ export default function BhavcopyTab() {
                           {record.SERIES || '-'}
                         </Badge>
                       </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {record.SECTOR ? (
-                          <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                            {record.SECTOR}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
+
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {record.DATE1 || '-'}
                       </td>

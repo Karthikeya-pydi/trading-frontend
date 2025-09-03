@@ -28,7 +28,7 @@ export default function AnalysisPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5 text-indigo-600" />
+              <BarChart3 className="h-5 w-5 text-teal-600" />
               <span>Analysis Dashboard</span>
             </CardTitle>
             <CardDescription>

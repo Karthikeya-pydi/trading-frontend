@@ -415,7 +415,6 @@ export default function ReturnsTab() {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Stock Returns Analysis</h2>
-          <p className="text-gray-600 mt-1">Performance data for 2,822 active stocks across multiple time periods</p>
         </div>
         <div className="flex space-x-3">
           <Button
