@@ -952,7 +952,7 @@ export default function ReturnsTab() {
                       onClick={() => handleSort("normalized_score")}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Normalized Score</span>
+                        <span>Score</span>
                         {sortField === "normalized_score" && (
                           <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                         )}
