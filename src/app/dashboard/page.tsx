@@ -102,6 +102,9 @@ export default function DashboardPage() {
   const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null)
   const [portfolioLoading, setPortfolioLoading] = useState(false)
   
+  // Stock scores state
+  const [stockScores, setStockScores] = useState<Record<string, number | null>>({})
+  
 
   
   // Market data form state  
@@ -281,10 +284,54 @@ export default function DashboardPage() {
       setHoldings(holdingsData)
       setDailyPnL(dailyPnLData)
       setRiskMetrics(riskMetricsData)
+
+      // Fetch stock scores for holdings
+      await loadStockScores(holdingsSummaryData, holdingsData)
     } catch (_error) {
       console.error('❌ Dashboard - Error loading portfolio data:', _error)
     } finally {
       setPortfolioLoading(false)
+    }
+  }
+
+  const loadStockScores = async (holdingsSummaryData: HoldingsSummary | null, holdingsData: Holding[] | null) => {
+    try {
+      console.log('🔍 Dashboard - Loading stock scores...')
+      
+      // Extract stock symbols from holdings data
+      const symbols: string[] = []
+      
+      // Get symbols from holdings summary (preferred)
+      if (holdingsSummaryData?.holdings) {
+        holdingsSummaryData.holdings.forEach(holding => {
+          if (holding.stock_name) {
+            symbols.push(holding.stock_name.toUpperCase())
+          }
+        })
+      }
+      
+      // Fallback to holdings data if summary not available
+      if (symbols.length === 0 && holdingsData) {
+        holdingsData.forEach(holding => {
+          if (holding.instrument) {
+            symbols.push(holding.instrument.toUpperCase())
+          }
+        })
+      }
+      
+      console.log('🔍 Dashboard - Extracted symbols for scoring:', symbols)
+      
+      if (symbols.length > 0) {
+        const scores = await TradingService.getStockScores(symbols)
+        console.log('✅ Dashboard - Stock scores loaded:', scores)
+        setStockScores(scores)
+      } else {
+        console.log('⚠️ Dashboard - No symbols found for scoring')
+        setStockScores({})
+      }
+    } catch (error) {
+      console.error('❌ Dashboard - Error loading stock scores:', error)
+      setStockScores({})
     }
   }
 
@@ -533,6 +580,7 @@ export default function DashboardPage() {
             holdingsSummary={holdingsSummary}
             dailyPnL={dailyPnL}
             riskMetrics={riskMetrics}
+            stockScores={stockScores}
             loading={portfolioLoading}
             onRefresh={loadPortfolioData}
             onUpdatePrices={updatePortfolioPrices}

@@ -336,4 +336,39 @@ export class TradingService {
   static async getBalance(): Promise<BalanceResponse> {
     return this.apiCall<BalanceResponse>(API_ENDPOINTS.IIFL_BALANCE)
   }
+
+  // Stock Scores for Portfolio Holdings
+  static async getStockScores(symbols: string[]): Promise<Record<string, number | null>> {
+    try {
+      console.log('🔍 TradingService - Fetching stock scores for symbols:', symbols)
+      
+      if (symbols.length === 0) {
+        return {}
+      }
+
+      // Fetch all returns data
+      const response = await this.apiCall<any>(`${API_ENDPOINTS.RETURNS_ALL}?include_normalized_score=true`)
+      console.log('✅ TradingService - Returns data response:', response)
+      
+      if (!response?.data || !Array.isArray(response.data)) {
+        console.log('❌ TradingService - No returns data found')
+        return {}
+      }
+
+      // Create a map of symbol to normalized score
+      const scoreMap: Record<string, number | null> = {}
+      
+      response.data.forEach((stock: any) => {
+        if (stock.symbol && stock.normalized_score !== null && stock.normalized_score !== undefined) {
+          scoreMap[stock.symbol.toUpperCase()] = stock.normalized_score
+        }
+      })
+
+      console.log('✅ TradingService - Score map created:', scoreMap)
+      return scoreMap
+    } catch (error) {
+      console.error('❌ TradingService - Error fetching stock scores:', error)
+      return {}
+    }
+  }
 } 

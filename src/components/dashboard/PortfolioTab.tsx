@@ -25,6 +25,7 @@ interface PortfolioTabProps {
   holdingsSummary: HoldingsSummary | null
   dailyPnL: DailyPnL | null
   riskMetrics: RiskMetrics | null
+  stockScores: Record<string, number | null>
   positions: Position[]
   trades: Trade[]
   loading: boolean
@@ -40,6 +41,7 @@ export function PortfolioTab({
   holdingsSummary,
   dailyPnL,
   riskMetrics,
+  stockScores,
   positions,
   trades,
   loading,
@@ -117,6 +119,12 @@ export function PortfolioTab({
   }
 
   const processedHoldings = getHoldingsFromData()
+
+  // Helper function to get stock score (0-100 scale)
+  const getStockScore = (stockName: string): number | null => {
+    if (!stockName) return null
+    return stockScores[stockName.toUpperCase()] || null
+  }
 
   // Get portfolio summary data with fallbacks
   const getPortfolioData = () => {
@@ -275,6 +283,7 @@ export function PortfolioTab({
                       <th className="text-left p-3 font-semibold text-lg">Invested Value</th>
                       <th className="text-left p-3 font-semibold text-lg">Current Value</th>
                       <th className="text-left p-3 font-semibold text-lg">P&L</th>
+                      <th className="text-left p-3 font-semibold text-lg">Score</th>
                       <th className="text-left p-3 font-semibold text-lg">Type</th>
                     </tr>
                   </thead>
@@ -320,6 +329,30 @@ export function PortfolioTab({
                             </span>
                           </td>
                           <td className="p-3">
+                            {(() => {
+                              const score = getStockScore(holding.instrument)
+                              if (score === null) {
+                                return <span className="text-gray-400 text-sm">-</span>
+                              }
+                              return (
+                                <div className="flex items-center space-x-1">
+                                  <span className={`font-semibold text-sm ${
+                                    score >= 75 ? 'text-green-600' : 
+                                    score >= 50 ? 'text-orange-600' : 
+                                    score >= 20 ? 'text-yellow-600' : 'text-red-600'
+                                  }`}>
+                                    {score.toFixed(0)}
+                                  </span>
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    score >= 75 ? 'bg-green-500' : 
+                                    score >= 50 ? 'bg-orange-500' : 
+                                    score >= 20 ? 'bg-yellow-500' : 'bg-red-500'
+                                  }`} />
+                                </div>
+                              )
+                            })()}
+                          </td>
+                          <td className="p-3">
                             {holding.isCollateral ? (
                               <Badge variant="secondary" className="text-xs">Collateral</Badge>
                             ) : (
@@ -329,7 +362,7 @@ export function PortfolioTab({
                         </tr>
                         {/* Bhavcopy Dropdown Row */}
                         <tr>
-                          <td colSpan={9} className="p-0">
+                          <td colSpan={10} className="p-0">
                             <StockBhavcopyDropdown
                               stockSymbol={holding.instrument}
                               stockName={holding.instrument}
