@@ -675,7 +675,6 @@ export interface StockRefreshResponse {
 export interface StockDeleteResponse {
   message: string
 }
-
 // =============================================================================
 // END OF TYPES
 // ============================================================================= 

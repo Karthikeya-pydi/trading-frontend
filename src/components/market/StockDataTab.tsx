@@ -410,7 +410,7 @@ export function StockDataTab({ onRefresh, initialSearch = "" }: StockDataTabProp
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Search className="h-5 w-5 text-blue-600" />
+            <Search className="h-5 w-5 text-teal-600" />
             <span>Search Stock Data</span>
           </CardTitle>
           <CardDescription>

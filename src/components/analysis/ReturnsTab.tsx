@@ -22,7 +22,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Award,
-  Building2
+  Building2,
+  Download
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 import { 
@@ -41,10 +42,14 @@ interface StockReturns {
   latest_date: string
   latest_close: number
   latest_volume: number
+  turnover: number | null
+  // raw_score: number | null
+  normalized_score: number | null
   returns_1_week: number | null
   returns_1_month: number | null
   returns_3_months: number | null
   returns_6_months: number | null
+  returns_9_months: number | null
   returns_1_year: number | null
   returns_3_years: number | null
   returns_5_years: number | null
@@ -121,6 +126,7 @@ export default function ReturnsTab() {
     { key: "1_Month", label: "1 Month" },
     { key: "3_Months", label: "3 Months" },
     { key: "6_Months", label: "6 Months" },
+    { key: "9_Months", label: "9 Months" },
     { key: "1_Year", label: "1 Year" },
     { key: "3_Years", label: "3 Years" },
     { key: "5_Years", label: "5 Years" }
@@ -219,9 +225,25 @@ export default function ReturnsTab() {
         headers['Authorization'] = `Bearer ${token}`
       }
 
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RETURNS_ALL}`, {
+      // Try with query parameters first, fallback to basic endpoint
+      const queryParams = new URLSearchParams({
+        include_turnover: 'true',
+        include_scores: 'true',
+        // include_raw_score: 'true',  // Commented out for now
+        include_normalized_score: 'true'
+      })
+      
+      let response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RETURNS_ALL}?${queryParams}`, {
         headers
       })
+      
+      // If the query parameters don't work, try without them
+      if (!response.ok) {
+        console.log('Query parameters not supported, trying basic endpoint...')
+        response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RETURNS_ALL}`, {
+          headers
+        })
+      }
 
       const data = await response.json()
 
@@ -367,6 +389,7 @@ export default function ReturnsTab() {
       case "1_Month": return record.returns_1_month
       case "3_Months": return record.returns_3_months
       case "6_Months": return record.returns_6_months
+      case "9_Months": return record.returns_9_months
       case "1_Year": return record.returns_1_year
       case "3_Years": return record.returns_3_years
       case "5_Years": return record.returns_5_years
@@ -389,6 +412,88 @@ export default function ReturnsTab() {
   const formatReturn = (value: number | null) => {
     if (value === null) return '-'
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+  }
+
+  // Format turnover value
+  const formatTurnover = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '-'
+    return `₹${value.toLocaleString()}`
+  }
+
+  // Format score value
+  const formatScore = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '-'
+    return value.toFixed(2)
+  }
+
+  // CSV export function
+  const exportToCSV = () => {
+    if (!filteredAndSortedData.length) return
+
+    // Define CSV headers
+    const headers = [
+      'Symbol',
+      'Fincode',
+      'ISIN',
+      'Latest Date',
+      'Latest Close',
+      'Latest Volume',
+      'Turnover',
+      'Normalized Score',
+      '1 Week Return',
+      '1 Month Return',
+      '3 Months Return',
+      '6 Months Return',
+      '9 Months Return',
+      '1 Year Return',
+      '3 Years Return',
+      '5 Years Return'
+    ]
+
+    // Convert data to CSV format
+    const csvData = filteredAndSortedData.map(record => [
+      record.symbol,
+      record.fincode,
+      record.isin,
+      record.latest_date,
+      record.latest_close,
+      record.latest_volume,
+      record.turnover || '',
+      record.normalized_score || '',
+      record.returns_1_week || '',
+      record.returns_1_month || '',
+      record.returns_3_months || '',
+      record.returns_6_months || '',
+      record.returns_9_months || '',
+      record.returns_1_year || '',
+      record.returns_3_years || '',
+      record.returns_5_years || ''
+    ])
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(field => 
+        typeof field === 'string' && field.includes(',') ? `"${field}"` : field
+      ).join(','))
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    
+    // Generate filename with timestamp and filter info
+    const timestamp = new Date().toISOString().split('T')[0]
+    const filterSuffix = selectedIndex ? `_${selectedIndex.replace(/[^a-zA-Z0-9]/g, '_')}` : ''
+    const filename = `stock_returns${filterSuffix}_${timestamp}.csv`
+    
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   // Handle index selection change
@@ -710,29 +815,53 @@ export default function ReturnsTab() {
       {returnsData && (
         <Card>
           <CardHeader>
-                         <CardTitle className="flex items-center space-x-2">
-               <Activity className="h-5 w-5 text-green-600" />
-               <span>Stock Returns Data</span>
-               {selectedIndex && (
-                                <Badge variant="outline" className="ml-2 bg-teal-50 text-teal-700 border-teal-200">
-                 {selectedIndex}
-               </Badge>
-               )}
-             </CardTitle>
-                         <CardDescription>
-               {selectedIndex ? (
-                 <>
-                   Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} stocks from {selectedIndex}
-                   {returnsData.data.length !== filteredAndSortedData.length && (
-                     <span className="text-gray-500 ml-2">
-                       (filtered from {returnsData.data.length} total stocks)
-                     </span>
-                   )}
-                 </>
-               ) : (
-                 `Showing ${startIndex + 1}-${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} records`
-               )}
-             </CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Activity className="h-5 w-5 text-green-600" />
+                <span className="text-xl font-semibold">Stock Returns Data</span>
+                {selectedIndex && (
+                  <Badge variant="outline" className="ml-2 bg-teal-50 text-teal-700 border-teal-200">
+                    {selectedIndex}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                onClick={exportToCSV}
+                variant="outline"
+                size="sm"
+                disabled={!filteredAndSortedData.length}
+                className="flex items-center space-x-2"
+              >
+                <Download className="h-4 w-4" />
+                <span>Download CSV</span>
+              </Button>
+            </div>
+            <CardDescription>
+              {selectedIndex ? (
+                <>
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} stocks from {selectedIndex}
+                  {returnsData.data.length !== filteredAndSortedData.length && (
+                    <span className="text-gray-500 ml-2">
+                      (filtered from {returnsData.data.length} total stocks)
+                    </span>
+                  )}
+                  {returnsData?.timestamp && (
+                    <span className="text-gray-500 ml-4">
+                      • Updated data as of {new Date(new Date(returnsData.timestamp).getTime() - 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} records
+                  {returnsData?.timestamp && (
+                    <span className="text-gray-500 ml-4">
+                      • Updated data as of {new Date(new Date(returnsData.timestamp).getTime() - 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
+                    </span>
+                  )}
+                </>
+              )}
+            </CardDescription>
           </CardHeader>
                      <CardContent>
              {/* No Results Message */}
@@ -796,6 +925,39 @@ export default function ReturnsTab() {
                     <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Volume
                     </th>
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("turnover")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Turnover</span>
+                        {sortField === "turnover" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
+                    {/* <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("raw_score")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Raw Score</span>
+                        {sortField === "raw_score" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th> */}
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("normalized_score")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Normalized Score</span>
+                        {sortField === "normalized_score" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
                                          {timePeriods.map((period) => (
                        <th 
                          key={`header-${period.key}`}
@@ -826,6 +988,15 @@ export default function ReturnsTab() {
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {record.latest_volume.toLocaleString()}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatTurnover(record.turnover)}
+                      </td>
+                      {/* <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatScore(record.raw_score)}
+                      </td> */}
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatScore(record.normalized_score)}
                       </td>
                                              {timePeriods.map((period) => {
                          const returnValue = getReturnValue(record, period.key)
