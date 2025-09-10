@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Loader2, CheckCircle, XCircle } from "lucide-react"
+import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -32,12 +33,48 @@ function AuthCallbackContent() {
           console.log('✅ Token stored successfully')
           
           setStatus('success')
-          setMessage('Authentication successful! Redirecting to dashboard...')
+          setMessage('Authentication successful! Checking setup...')
           
-          // Redirect to dashboard after a short delay
-          setTimeout(() => {
-            router.push('/dashboard')
-          }, 1500)
+          // Check if user needs setup
+          try {
+            const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.USER_PROFILE}`, {
+              headers: { 
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json" 
+              },
+            })
+            
+            if (response.ok) {
+              const user = await response.json()
+              
+              if (user.has_iifl_market_credentials || user.has_iifl_interactive_credentials) {
+                // User has credentials, go to dashboard
+                setMessage('Setup complete! Redirecting to dashboard...')
+                setTimeout(() => {
+                  router.push('/dashboard')
+                }, 1500)
+              } else {
+                // User needs setup
+                setMessage('First time setup required! Redirecting to setup...')
+                setTimeout(() => {
+                  router.push('/setup')
+                }, 1500)
+              }
+            } else {
+              // User needs setup
+              setMessage('First time setup required! Redirecting to setup...')
+              setTimeout(() => {
+                router.push('/setup')
+              }, 1500)
+            }
+          } catch (error) {
+            console.error('Error checking setup status:', error)
+            // Default to setup page for first-time users
+            setMessage('First time setup required! Redirecting to setup...')
+            setTimeout(() => {
+              router.push('/setup')
+            }, 1500)
+          }
         } else {
           setStatus('error')
           setMessage('No authentication token received.')

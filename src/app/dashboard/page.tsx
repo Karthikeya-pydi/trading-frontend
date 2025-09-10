@@ -154,7 +154,11 @@ export default function DashboardPage() {
           showAlert('success', 'API credentials verified successfully!')
           loadAllData()
         } else {
-          showAlert('error', 'IIFL API credentials not found. Please configure your API keys.')
+          // User needs to complete setup
+          showAlert('error', 'IIFL API credentials not found. Redirecting to setup...')
+          setTimeout(() => {
+            router.push('/setup')
+          }, 2000)
         }
       } else {
         // Token is invalid, redirect to login

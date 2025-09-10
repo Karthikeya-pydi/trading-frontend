@@ -5,17 +5,22 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, ArrowRight, Shield, Zap, BarChart3 } from "lucide-react"
+import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 
 export default function HomePage() {
   const router = useRouter()
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('token')
-    if (token) {
-      router.push('/dashboard')
-    }
-  }, [router])
+  // No automatic redirects - users must explicitly click Sign In/Get Started
+
+  const handleSignInClick = () => {
+    // Sign In always goes to login page
+    router.push('/login')
+  }
+
+  const handleGetStartedClick = () => {
+    // Always go to login page for new users
+    router.push('/login')
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -32,13 +37,13 @@ export default function HomePage() {
             <div className="flex items-center space-x-4">
               <Button
                 variant="outline"
-                onClick={() => router.push('/login')}
+                onClick={handleSignInClick}
                 className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               >
                 Sign In
               </Button>
               <Button
-                onClick={() => router.push('/login')}
+                onClick={handleSignInClick}
                 className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white"
               >
                 Get Started
@@ -60,7 +65,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
-              onClick={() => router.push('/login')}
+              onClick={handleGetStartedClick}
               size="lg"
               className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white px-8 py-3"
             >
@@ -70,7 +75,7 @@ export default function HomePage() {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => router.push('/login')}
+              onClick={handleSignInClick}
               className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-3"
             >
               Sign In
