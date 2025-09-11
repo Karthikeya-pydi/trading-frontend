@@ -35,8 +35,6 @@ export const LOCAL_STORAGE_KEYS = {
 
 export const API_ENDPOINTS = {
   // Auth
-  AUTH_ME: '/api/auth/me',
-  AUTH_REFRESH: '/api/auth/refresh',
   AUTH_LOGOUT: '/api/auth/logout',
   GOOGLE_OAUTH: '/api/auth/oauth/google/login',
   GOOGLE_CALLBACK: '/api/auth/oauth/google/callback',
@@ -44,7 +42,6 @@ export const API_ENDPOINTS = {
   // User
   USER_PROFILE: '/api/users/me',
   SET_IIFL_CREDENTIALS: '/api/users/set-iifl-credentials',
-  IIFL_CREDENTIALS: '/api/users/iifl-credentials',
   
   // Trading (Updated to match backend)
   PLACE_ORDER: '/api/trading/place-order',
@@ -73,8 +70,6 @@ export const API_ENDPOINTS = {
   MARKET_SEARCH_INSTRUMENTS: '/api/market/instruments/search',
   MARKET_GET_QUOTES: '/api/market/market-data',
   MARKET_GET_LTP: '/api/market/ltp',
-  MARKET_INSTRUMENT_MASTER: '/api/market/instruments/master',
-  MARKET_INFO: '/api/market',
   
   // Stock Data (New endpoints)
   STOCK_DATA_GET: '/api/market/stock',  // Used with /{stock_name}
@@ -89,27 +84,14 @@ export const API_ENDPOINTS = {
   NIFTY_INDEX_CONSTITUENTS: '/api/market/nifty',
   
   // Returns Data (New endpoints)
-  RETURNS_STOCK: '/api/returns/stock',
   RETURNS_ALL: '/api/returns/all',
-  RETURNS_SUMMARY: '/api/returns/summary',
-  RETURNS_SEARCH: '/api/returns/search',
-  RETURNS_TOP_PERFORMERS: '/api/returns/top-performers',
-  RETURNS_BOTTOM_PERFORMERS: '/api/returns/bottom-performers',
-  RETURNS_REFRESH: '/api/returns/refresh',
   
-  // Portfolio Returns (Portfolio context)
-  PORTFOLIO_RETURNS_STOCK: '/api/portfolio/returns/stock',
-  PORTFOLIO_RETURNS_SUMMARY: '/api/portfolio/returns/summary',
-  PORTFOLIO_RETURNS_TOP_PERFORMERS: '/api/portfolio/returns/top-performers',
   
   // IIFL Integration
   IIFL_MARKET_CREDENTIALS: '/api/iifl/credentials/market',
   IIFL_INTERACTIVE_CREDENTIALS: '/api/iifl/credentials/interactive',
   IIFL_VALIDATE_CREDENTIALS: '/api/iifl/credentials/validate',
-  IIFL_BALANCE: '/api/iifl/balance',
-  
-  // Health
-  HEALTH: '/health'
+  IIFL_BALANCE: '/api/iifl/balance'
 } as const
 
 export const EXCHANGE_SEGMENTS = {
