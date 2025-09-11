@@ -129,7 +129,7 @@ export function StockBhavcopyDropdown({
         <div className="p-6 space-y-6 bg-white">
           {loading && (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mx-auto"></div>
               <p className="text-sm text-gray-500 mt-3">Fetching latest market data...</p>
               <p className="text-xs text-gray-400 mt-1">This may take a few seconds</p>
             </div>

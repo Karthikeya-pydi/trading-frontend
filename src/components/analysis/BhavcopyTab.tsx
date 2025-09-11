@@ -665,7 +665,7 @@ export default function BhavcopyTab() {
       {loading && !bhavcopyData && (
         <Card>
           <CardContent className="text-center py-12">
-            <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Bhavcopy Data</h3>
             <p className="text-gray-600">Please wait while we fetch the latest market data...</p>
           </CardContent>
