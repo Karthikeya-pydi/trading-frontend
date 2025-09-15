@@ -1,4 +1,5 @@
 import { API_BASE_URL, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '@/constants'
+import { ApiClient } from './api-client.service'
 import { 
   Position, 
   Trade, 
@@ -18,40 +19,17 @@ import {
 } from '@/types'
 
 export class TradingService {
-  private static getAuthHeaders() {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN)
-    return {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    }
-  }
-
   private static async apiCall<T>(endpoint: string, method: string = 'GET', body?: object): Promise<T> {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN)
-    
-    if (!token) {
-      window.location.href = "/login"
-      return {} as T
-    }
-    
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const result = await ApiClient.makeRequest<T>(endpoint, {
       method,
-      headers: this.getAuthHeaders(),
       body: body ? JSON.stringify(body) : undefined
     })
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Token is invalid, redirect to login
-        localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN)
-        window.location.href = "/login"
-        return {} as T
-      }
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || `API call failed: ${response.statusText}`)
+    if (result.error) {
+      throw new Error(result.error)
     }
 
-    return response.json()
+    return result.data as T
   }
 
   // =============================================================================

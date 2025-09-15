@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+import { API_BASE_URL, API_ENDPOINTS } from '@/constants'
+import { ApiClient } from '@/services/api-client.service'
 
 export const api = {
   // Get Google OAuth URL with callback
@@ -8,16 +9,8 @@ export const api = {
 
   // Validate token (optional - for checking if user is authenticated)
   validateToken: async () => {
-    const token = localStorage.getItem('token')
-    if (!token) return null
-    
-    const response = await fetch(`${API_BASE_URL}/api/auth/validate`, {
-      headers: { 
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json" 
-      },
-    })
-    return response.ok ? response.json() : null
+    const result = await ApiClient.get(API_ENDPOINTS.AUTH_VALIDATE)
+    return result.data || null
   },
 
   // Save IIFL API keys
@@ -27,82 +20,53 @@ export const api = {
     clientId: string
     password: string
   }) => {
-    const response = await fetch(`${API_BASE_URL}/api/keys`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(keys),
-    })
-    return response.json()
+    const result = await ApiClient.post('/api/keys', keys)
+    return result.data
   },
 
   // Get portfolio data
   getPortfolio: async () => {
-    const response = await fetch(`${API_BASE_URL}/api/portfolio`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    return response.json()
+    const result = await ApiClient.get('/api/portfolio')
+    return result.data
   },
 
   // Get positions
   getPositions: async () => {
-    const response = await fetch(`${API_BASE_URL}/api/positions`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    return response.json()
+    const result = await ApiClient.get('/api/positions')
+    return result.data
   },
 
   // Stock Screening APIs
   searchStocks: async (query: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/screening/search`, {
-      method: "POST",
-      headers: { 
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json" 
-      },
-      body: JSON.stringify({ query }),
-    })
-    return response.json()
+    const result = await ApiClient.post('/api/screening/search', { query })
+    return result.data
   },
 
   scrapeStock: async (stockSymbol: string, stockName: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/screening/scrape`, {
-      method: "POST",
-      headers: { 
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json" 
-      },
-      body: JSON.stringify({ stock_symbol: stockSymbol, stock_name: stockName }),
+    const result = await ApiClient.post('/api/screening/scrape', { 
+      stock_symbol: stockSymbol, 
+      stock_name: stockName 
     })
-    return response.json()
+    return result.data
   },
 
   getStockData: async (stockSymbol: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/screening/${stockSymbol}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    return response.json()
+    const result = await ApiClient.get(`/api/screening/${stockSymbol}`)
+    return result.data
   },
 
   listStocks: async (skip = 0, limit = 100) => {
-    const response = await fetch(`${API_BASE_URL}/api/screening/?skip=${skip}&limit=${limit}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    return response.json()
+    const result = await ApiClient.get(`/api/screening/?skip=${skip}&limit=${limit}`)
+    return result.data
   },
 
   refreshStockData: async (stockSymbol: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/screening/${stockSymbol}/refresh`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    return response.json()
+    const result = await ApiClient.post(`/api/screening/${stockSymbol}/refresh`)
+    return result.data
   },
 
   deleteStockData: async (stockSymbol: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/screening/${stockSymbol}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    return response.json()
+    const result = await ApiClient.delete(`/api/screening/${stockSymbol}`)
+    return result.data
   },
 }

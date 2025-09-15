@@ -15,8 +15,9 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get token from URL parameters
-        const token = searchParams.get('token')
+        // Get tokens from URL parameters
+        const accessToken = searchParams.get('access_token')
+        const refreshToken = searchParams.get('refresh_token')
         const error = searchParams.get('error')
 
         if (error) {
@@ -27,10 +28,13 @@ function AuthCallbackContent() {
           return
         }
 
-        if (token) {
-          // Store the token
-          localStorage.setItem('token', token)
-          console.log('✅ Token stored successfully')
+        if (accessToken) {
+          // Store both tokens
+          localStorage.setItem('token', accessToken)
+          if (refreshToken) {
+            localStorage.setItem('refresh_token', refreshToken)
+          }
+          console.log('✅ Tokens stored successfully')
           
           setStatus('success')
           setMessage('Authentication successful! Checking setup...')
@@ -39,7 +43,7 @@ function AuthCallbackContent() {
           try {
             const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.USER_PROFILE}`, {
               headers: { 
-                "Authorization": `Bearer ${token}`,
+                "Authorization": `Bearer ${accessToken}`,
                 "Content-Type": "application/json" 
               },
             })

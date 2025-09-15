@@ -30,12 +30,15 @@ export const TAB_KEYS = {
 } as const
 
 export const LOCAL_STORAGE_KEYS = {
-  TOKEN: 'token'
+  TOKEN: 'token',
+  REFRESH_TOKEN: 'refresh_token'
 } as const
 
 export const API_ENDPOINTS = {
   // Auth
   AUTH_LOGOUT: '/api/auth/logout',
+  AUTH_REFRESH: '/api/auth/refresh',
+  AUTH_VALIDATE: '/api/auth/validate',
   GOOGLE_OAUTH: '/api/auth/oauth/google/login',
   GOOGLE_CALLBACK: '/api/auth/oauth/google/callback',
   

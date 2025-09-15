@@ -184,37 +184,18 @@ export default function DashboardPage() {
   }, [mounted, verifyApiCredentials])
 
   const apiCall = async (endpoint: string, method: string = 'GET', body?: object) => {
-    const token = localStorage.getItem('token')
+    const { ApiClient } = await import('@/services/api-client.service')
     
-    if (!token) {
-      window.location.href = "/login"
-      return
-    }
-    
-
-    
-    // For real Google OAuth API calls
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const result = await ApiClient.makeRequest(endpoint, {
       method,
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
       body: body ? JSON.stringify(body) : undefined
     })
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Token is invalid, redirect to login
-        localStorage.removeItem('token')
-        window.location.href = "/login"
-        return
-      }
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || response.statusText)
+    if (result.error) {
+      throw new Error(result.error)
     }
 
-    return response.json()
+    return result.data
   }
 
   const loadAllData = async () => {
