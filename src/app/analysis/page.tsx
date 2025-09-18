@@ -4,12 +4,13 @@ import { useState } from "react"
 import { Layout } from "@/components/layout/Layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BarChart3, TrendingUp, Activity } from "lucide-react"
+import { BarChart3, TrendingUp, Activity, Search } from "lucide-react"
 import ReturnsTab from "@/components/analysis/ReturnsTab"
 import BhavcopyTab from "@/components/analysis/BhavcopyTab"
+import StockAnalysisTab from "@/components/analysis/StockAnalysisTab"
 
 export default function AnalysisPage() {
-  const [activeTab, setActiveTab] = useState("returns")
+  const [activeTab, setActiveTab] = useState("stock-analysis")
 
   return (
     <Layout title="Market Analysis">
@@ -32,12 +33,16 @@ export default function AnalysisPage() {
               <span>Analysis Dashboard</span>
             </CardTitle>
             <CardDescription>
-              Choose between stock returns analysis and market bhavcopy data
+              Choose between comprehensive stock analysis, returns analysis, and market bhavcopy data
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="stock-analysis" className="flex items-center space-x-2">
+                  <Search className="h-4 w-4" />
+                  <span>Stock Analysis</span>
+                </TabsTrigger>
                 <TabsTrigger value="returns" className="flex items-center space-x-2">
                   <TrendingUp className="h-4 w-4" />
                   <span>Stock Returns</span>
@@ -47,6 +52,10 @@ export default function AnalysisPage() {
                   <span>Bhavcopy Data</span>
                 </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="stock-analysis" className="mt-6">
+                <StockAnalysisTab />
+              </TabsContent>
 
               <TabsContent value="returns" className="mt-6">
                 <ReturnsTab />

@@ -69,4 +69,15 @@ export const api = {
     const result = await ApiClient.delete(`/api/screening/${stockSymbol}`)
     return result.data
   },
+
+  // Stock Analysis APIs
+  searchStockAnalysis: async (symbol: string) => {
+    const result = await ApiClient.get(`/api/stock-analysis/search?symbol=${encodeURIComponent(symbol)}`)
+    return result.data
+  },
+
+  getAvailableStocks: async () => {
+    const result = await ApiClient.get('/api/stock-analysis/stocks')
+    return result.data
+  }
 }

@@ -89,6 +89,9 @@ export const API_ENDPOINTS = {
   // Returns Data (New endpoints)
   RETURNS_ALL: '/api/returns/all',
   
+  // Stock Analysis Data (New endpoints)
+  STOCK_ANALYSIS_SEARCH: '/api/stock-analysis/search',
+  STOCK_ANALYSIS_STOCKS: '/api/stock-analysis/stocks',
   
   // IIFL Integration
   IIFL_MARKET_CREDENTIALS: '/api/iifl/credentials/market',
