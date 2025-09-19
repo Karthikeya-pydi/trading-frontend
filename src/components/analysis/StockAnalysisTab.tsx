@@ -18,8 +18,10 @@ import {
   Loader2,
   RefreshCw,
   Download,
-  Info
+  Info,
+  FileSpreadsheet
 } from "lucide-react"
+import * as XLSX from 'xlsx'
 import { StockAnalysisService } from "@/services/stock-analysis.service"
 import { 
   StockAnalysisResponse, 
@@ -116,12 +118,85 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
   const exportData = () => {
     if (!analysisData) return
     
-    const dataStr = JSON.stringify(analysisData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    // Create workbook with multiple sheets
+    const workbook = XLSX.utils.book_new()
+    
+    // Sheet 1: Overview and Summary
+    const overviewData = [
+      ['Stock Analysis Report', ''],
+      ['Symbol', analysisData.symbol],
+      ['Analysis Date', new Date(analysisData.analysis_date).toLocaleDateString()],
+      ['Data Points', analysisData.data_points],
+      [''],
+      ['Descriptive Statistics', ''],
+      ['Mean Return', analysisData.descriptive_stats.mean_return],
+      ['Standard Deviation', analysisData.descriptive_stats.std_return],
+      ['Skewness', analysisData.descriptive_stats.skew_return],
+      ['Kurtosis', analysisData.descriptive_stats.kurtosis_return],
+      ['Min Return', analysisData.descriptive_stats.min_return],
+      ['Max Return', analysisData.descriptive_stats.max_return],
+      ['P1 Return', analysisData.descriptive_stats.p1_return],
+      ['P99 Return', analysisData.descriptive_stats.p99_return],
+      ['Illiquid Flag', analysisData.descriptive_stats.illiquid_flag ? 'Yes' : 'No'],
+      [''],
+      ['Global Analysis', ''],
+      ['Global Median', analysisData.global_analysis.global_median],
+      ['Global MAD', analysisData.global_analysis.global_mad],
+      ['Global Outliers', analysisData.global_analysis.global_outlier_count],
+      [''],
+      ['Rolling Analysis', ''],
+      ['10-day Windows', analysisData.rolling_analysis.window_ready_10],
+      ['40-day Windows', analysisData.rolling_analysis.window_ready_40],
+      ['120-day Windows', analysisData.rolling_analysis.window_ready_120],
+      ['Mild Anomalies', analysisData.rolling_analysis.mild_anomaly_count],
+      ['Major Anomalies', analysisData.rolling_analysis.major_anomaly_count],
+      [''],
+      ['Per-Stock Analysis', ''],
+      ['Per-Stock Median', analysisData.per_stock_analysis.per_stock_median],
+      ['Per-Stock MAD', analysisData.per_stock_analysis.per_stock_mad],
+      ['Robust Outliers', analysisData.per_stock_analysis.robust_outlier_count],
+      ['Very Extreme', analysisData.per_stock_analysis.very_extreme_count]
+    ]
+    
+    const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData)
+    XLSX.utils.book_append_sheet(workbook, overviewSheet, 'Overview')
+    
+    // Sheet 2: Detailed Stock Data
+    const stockDataHeaders = [
+      'Date', 'Close Price', 'Log Returns', 'Volume', 
+      'Global Outlier', 'Mild Anomaly', 'Major Anomaly', 
+      'Robust Outlier', 'Very Extreme', 'Window Ready 10d', 
+      'Window Ready 40d', 'Window Ready 120d'
+    ]
+    
+    const stockDataRows = analysisData.detailed_data.map(row => [
+      new Date(row.date).toLocaleDateString(),
+      row.close,
+      row.log_returns,
+      row.volume,
+      row.global_outlier_flag ? 'Yes' : 'No',
+      row.mild_anomaly_flag ? 'Yes' : 'No',
+      row.major_anomaly_flag ? 'Yes' : 'No',
+      row.robust_outlier_flag ? 'Yes' : 'No',
+      row.very_extreme_flag ? 'Yes' : 'No',
+      row.window_ready_10 ? 'Yes' : 'No',
+      row.window_ready_40 ? 'Yes' : 'No',
+      row.window_ready_120 ? 'Yes' : 'No'
+    ])
+    
+    const stockData = [stockDataHeaders, ...stockDataRows]
+    const stockDataSheet = XLSX.utils.aoa_to_sheet(stockData)
+    XLSX.utils.book_append_sheet(workbook, stockDataSheet, 'Stock Data')
+    
+    // Generate Excel file
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const dataBlob = new Blob([excelBuffer], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${analysisData.symbol}_analysis_${new Date().toISOString().split('T')[0]}.json`
+    link.download = `${analysisData.symbol}_analysis_${new Date().toISOString().split('T')[0]}.xlsx`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -132,7 +207,7 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Search className="h-5 w-5 text-blue-600" />
+            <Search className="h-5 w-5 text-teal-600" />
             <span>Stock Analysis Search</span>
           </CardTitle>
           <CardDescription>
@@ -195,8 +270,8 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
                   size="sm"
                   onClick={exportData}
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export Excel
                 </Button>
                 <Button
                   variant="outline"
@@ -620,7 +695,7 @@ function AnomaliesSection({
             <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
               <div>
                 <div className="font-medium text-yellow-800">Mild Anomalies</div>
-                <div className="text-sm text-yellow-600">|z-score| > 3</div>
+                <div className="text-sm text-yellow-600">|z-score| &gt; 3</div>
               </div>
               <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
                 {formatLargeNumber(rollingAnalysis.mild_anomaly_count)}
@@ -630,7 +705,7 @@ function AnomaliesSection({
             <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
               <div>
                 <div className="font-medium text-orange-800">Major Anomalies</div>
-                <div className="text-sm text-orange-600">|z-score| > 6</div>
+                <div className="text-sm text-orange-600">|z-score| &gt; 6</div>
               </div>
               <Badge variant="outline" className="bg-orange-100 text-orange-800">
                 {formatLargeNumber(rollingAnalysis.major_anomaly_count)}
@@ -640,7 +715,7 @@ function AnomaliesSection({
             <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
               <div>
                 <div className="font-medium text-red-800">Robust Outliers</div>
-                <div className="text-sm text-red-600">|z-score| > 6 (per-stock)</div>
+                <div className="text-sm text-red-600">|z-score| &gt; 6 (per-stock)</div>
               </div>
               <Badge variant="destructive">
                 {formatLargeNumber(perStockAnalysis.robust_outlier_count)}
@@ -650,7 +725,7 @@ function AnomaliesSection({
             <div className="flex items-center justify-between p-3 bg-red-100 rounded-lg">
               <div>
                 <div className="font-medium text-red-900">Very Extreme</div>
-                <div className="text-sm text-red-700">|z-score| > 10</div>
+                <div className="text-sm text-red-700">|z-score| &gt; 10</div>
               </div>
               <Badge variant="destructive" className="bg-red-800">
                 {formatLargeNumber(perStockAnalysis.very_extreme_count)}
