@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,8 @@ import {
   RefreshCw,
   Download,
   Info,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ChevronDown
 } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { StockAnalysisService } from "@/services/stock-analysis.service"
@@ -55,14 +56,32 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
   const [error, setError] = useState<string | null>(null)
   const [analysisData, setAnalysisData] = useState<StockAnalysisResponse | null>(null)
   const [availableStocks, setAvailableStocks] = useState<string[]>([])
-  const [showAvailableStocks, setShowAvailableStocks] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   const [isUsingMockData, setIsUsingMockData] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Load available stocks on component mount
   useEffect(() => {
     loadAvailableStocks()
   }, [])
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDropdown])
 
   const loadAvailableStocks = useCallback(async () => {
     try {
@@ -72,6 +91,16 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
       console.error('Failed to load available stocks:', error)
     }
   }, [])
+
+  // Filter stocks based on search input
+  const filteredStocks = availableStocks.filter(stock =>
+    stock.toLowerCase().includes(searchSymbol.toLowerCase())
+  )
+
+  const handleStockSelect = (stock: string) => {
+    setSearchSymbol(stock)
+    setShowDropdown(false)
+  }
 
   const handleSearch = useCallback(async () => {
     if (!searchSymbol.trim()) {
@@ -216,90 +245,101 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex space-x-2">
-            <Input
-              placeholder="Enter stock symbol (e.g., RELIANCE, TCS, HDFC)"
-              value={searchSymbol}
-              onChange={(e) => setSearchSymbol(e.target.value.toUpperCase())}
-              onKeyPress={handleKeyPress}
-              className="flex-1"
-            />
-            <Button 
-              onClick={handleSearch} 
-              disabled={loading || !searchSymbol.trim()}
-              className="px-6"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </>
-              )}
-            </Button>
-          </div>
+          <div className="relative">
+            <div className="flex space-x-2">
+              <div className="flex-1 relative">
+                <Input
+                  placeholder="Search or select stock symbol..."
+                  value={searchSymbol}
+                  onChange={(e) => {
+                    setSearchSymbol(e.target.value.toUpperCase())
+                    setShowDropdown(true)
+                  }}
+                  onFocus={() => setShowDropdown(true)}
+                  onKeyPress={handleKeyPress}
+                  className="pr-10"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                >
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                </Button>
+              </div>
+              <Button 
+                onClick={handleSearch} 
+                disabled={loading || !searchSymbol.trim()}
+                className="px-6"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Search
+                  </>
+                )}
+              </Button>
+            </div>
 
-          {/* Available Stocks Toggle */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAvailableStocks(!showAvailableStocks)}
-            >
-              <Info className="h-4 w-4 mr-2" />
-              {showAvailableStocks ? 'Hide' : 'Show'} Available Stocks
-            </Button>
-            
-            {analysisData && (
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={refreshAnalysis}
-                  disabled={loading}
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportData}
-                >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Export Excel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearResults}
-                >
-                  Clear
-                </Button>
+            {/* Clean Dropdown */}
+            {showDropdown && (
+              <div ref={dropdownRef} className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-60 overflow-hidden">
+                <div className="max-h-60 overflow-y-auto">
+                  {filteredStocks.length > 0 ? (
+                    <div className="p-2">
+                      {filteredStocks.map((stock) => (
+                        <div
+                          key={stock}
+                          className="p-2 hover:bg-gray-50 cursor-pointer rounded text-sm"
+                          onClick={() => handleStockSelect(stock)}
+                        >
+                          {stock}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      No stocks found
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Available Stocks */}
-          {showAvailableStocks && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">Available stocks for analysis:</p>
-              <div className="flex flex-wrap gap-2">
-                {availableStocks.map((stock) => (
-                  <Badge
-                    key={stock}
-                    variant="outline"
-                    className="cursor-pointer hover:bg-blue-50"
-                    onClick={() => setSearchSymbol(stock)}
-                  >
-                    {stock}
-                  </Badge>
-                ))}
-              </div>
+          {/* Action Buttons */}
+          {analysisData && (
+            <div className="flex space-x-2 pt-2 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshAnalysis}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportData}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearResults}
+              >
+                Clear
+              </Button>
             </div>
           )}
         </CardContent>
