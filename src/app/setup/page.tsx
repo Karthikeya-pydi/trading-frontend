@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { TrendingUp, Loader2, CheckCircle, Eye, EyeOff, ExternalLink } from "lucide-react"
-import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
+import { API_BASE_URL, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from "@/constants"
+import { ApiClient } from "@/services/api-client.service"
 
 interface IIFLCredentials {
   user_id: string
@@ -37,7 +38,7 @@ export default function SetupPage() {
 
   // Check if user is authenticated
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN)
     if (!token) {
       router.push('/login')
     }
@@ -58,29 +59,16 @@ export default function SetupPage() {
     setSuccess("")
 
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        throw new Error('No authentication token found')
-      }
-
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.IIFL_VALIDATE_CREDENTIALS}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: credentials.user_id,
-          interactive_api_key: credentials.interactive_api_key,
-          interactive_secret_key: credentials.interactive_secret_key,
-          market_api_key: credentials.market_api_key,
-          market_secret_key: credentials.market_secret_key
-        })
+      const result = await ApiClient.post(API_ENDPOINTS.IIFL_VALIDATE_CREDENTIALS, {
+        user_id: credentials.user_id,
+        interactive_api_key: credentials.interactive_api_key,
+        interactive_secret_key: credentials.interactive_secret_key,
+        market_api_key: credentials.market_api_key,
+        market_secret_key: credentials.market_secret_key
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Failed to validate credentials')
+      if (result.error) {
+        throw new Error(result.error)
       }
 
       setSuccess('Credentials validated successfully!')
@@ -98,47 +86,26 @@ export default function SetupPage() {
     setSuccess("")
 
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        throw new Error('No authentication token found')
-      }
-
       // Save Interactive credentials
-      const interactiveResponse = await fetch(`${API_BASE_URL}${API_ENDPOINTS.IIFL_INTERACTIVE_CREDENTIALS}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: credentials.user_id,
-          api_key: credentials.interactive_api_key,
-          secret_key: credentials.interactive_secret_key
-        })
+      const interactiveResult = await ApiClient.post(API_ENDPOINTS.IIFL_INTERACTIVE_CREDENTIALS, {
+        user_id: credentials.user_id,
+        api_key: credentials.interactive_api_key,
+        secret_key: credentials.interactive_secret_key
       })
 
-      if (!interactiveResponse.ok) {
-        const errorData = await interactiveResponse.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Failed to save interactive credentials')
+      if (interactiveResult.error) {
+        throw new Error(interactiveResult.error)
       }
 
       // Save Market credentials
-      const marketResponse = await fetch(`${API_BASE_URL}${API_ENDPOINTS.IIFL_MARKET_CREDENTIALS}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: credentials.user_id,
-          api_key: credentials.market_api_key,
-          secret_key: credentials.market_secret_key
-        })
+      const marketResult = await ApiClient.post(API_ENDPOINTS.IIFL_MARKET_CREDENTIALS, {
+        user_id: credentials.user_id,
+        api_key: credentials.market_api_key,
+        secret_key: credentials.market_secret_key
       })
 
-      if (!marketResponse.ok) {
-        const errorData = await marketResponse.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Failed to save market credentials')
+      if (marketResult.error) {
+        throw new Error(marketResult.error)
       }
 
       setSuccess('Credentials saved successfully! Redirecting to dashboard...')

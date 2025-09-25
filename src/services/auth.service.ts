@@ -25,14 +25,29 @@ export class AuthService {
 
   static async validateToken(): Promise<User> {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN)
+    const refreshToken = localStorage.getItem(LOCAL_STORAGE_KEYS.REFRESH_TOKEN)
     if (!token) throw new Error('No token found')
     
+    const headers: Record<string, string> = { 
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json" 
+    }
+    
+    // Include refresh token if available for automatic refresh
+    if (refreshToken) {
+      headers['X-Refresh-Token'] = refreshToken
+    }
+    
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.USER_PROFILE}`, {
-      headers: { 
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json" 
-      },
+      headers
     })
+
+    // Check for new access token in response headers
+    const newAccessToken = response.headers.get('x-new-access-token')
+    if (newAccessToken) {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, newAccessToken)
+      console.log('✅ Token refreshed automatically during validation')
+    }
 
     if (!response.ok) {
       throw new Error('Invalid token')
@@ -43,21 +58,37 @@ export class AuthService {
 
   static async getUserProfile(): Promise<User | null> {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN)
+    const refreshToken = localStorage.getItem(LOCAL_STORAGE_KEYS.REFRESH_TOKEN)
     if (!token) return null
 
     try {
+      const headers: Record<string, string> = { 
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json" 
+      }
+      
+      // Include refresh token if available for automatic refresh
+      if (refreshToken) {
+        headers['X-Refresh-Token'] = refreshToken
+      }
+      
       const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.USER_PROFILE}`, {
         method: "GET",
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json" 
-        },
+        headers
       })
+
+      // Check for new access token in response headers
+      const newAccessToken = response.headers.get('x-new-access-token')
+      if (newAccessToken) {
+        localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, newAccessToken)
+        console.log('✅ Token refreshed automatically during profile fetch')
+      }
 
       if (response.ok) {
         return response.json()
       } else {
         localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN)
+        localStorage.removeItem(LOCAL_STORAGE_KEYS.REFRESH_TOKEN)
         return null
       }
     } catch (error) {
@@ -95,16 +126,24 @@ export class AuthService {
   static async logout(): Promise<void> {
     try {
       const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN)
+      const refreshToken = localStorage.getItem(LOCAL_STORAGE_KEYS.REFRESH_TOKEN)
       
       // Call backend logout endpoint to clear IIFL sessions
       if (token) {
         try {
+          const headers: Record<string, string> = { 
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json" 
+          }
+          
+          // Include refresh token if available
+          if (refreshToken) {
+            headers['X-Refresh-Token'] = refreshToken
+          }
+          
           await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH_LOGOUT}`, {
             method: "POST",
-            headers: { 
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json" 
-            }
+            headers
           })
         } catch (error) {
           // Non-critical error - silent fail
