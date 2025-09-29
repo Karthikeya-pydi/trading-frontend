@@ -68,10 +68,24 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         />
       )}
 
+      {/* Toggle Button - positioned at sidebar edge */}
+      <div className={`fixed top-20 z-50 transition-all duration-300 ease-in-out ${
+        isOpen ? 'left-64' : 'left-0'
+      }`}>
+        <Button
+          onClick={toggleSidebar}
+          variant="ghost"
+          size="sm"
+          className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-r-lg shadow-sm transition-all duration-200 hover:shadow-md"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      </div>
+
       {/* Sidebar */}
       <aside className={`fixed top-20 left-0 z-40 h-[calc(100vh-5rem)] w-64 bg-white border-r border-gray-200 transform transition-transform duration-150 ease-in-out ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:translate-x-0 lg:fixed lg:top-20 lg:h-[calc(100vh-5rem)] lg:w-64`}>
+      }`}>
         
         {/* Sidebar header - only show on mobile */}
         <div className="lg:hidden flex items-center justify-end h-16 px-6 border-b border-gray-200">

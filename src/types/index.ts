@@ -758,5 +758,87 @@ export interface StockAnalysisError {
 }
 
 // =============================================================================
+// BHAVCOPY ENDPOINT TYPES
+// =============================================================================
+
+export interface BhavcopyFile {
+  filename: string
+  s3_key: string
+  size_mb: number
+  last_modified: string
+  source: string
+}
+
+export interface BhavcopyFilesListResponse {
+  message: string
+  files: BhavcopyFile[]
+  total_files: number
+  source: string
+  timestamp: string
+}
+
+export interface BhavcopyFileDataResponse {
+  message: string
+  total_records: number
+  source_file: string
+  file_size_mb: number
+  last_modified: string
+  source: string
+  data: BhavcopyRecord[]
+}
+
+// =============================================================================
+// RETURNS ENDPOINT TYPES
+// =============================================================================
+
+export interface ReturnsFile {
+  filename: string
+  s3_key: string
+  size_mb: number
+  last_modified: string
+  source: string
+}
+
+export interface ReturnsFilesListResponse {
+  message: string
+  files: ReturnsFile[]
+  total_files: number
+  source: string
+  timestamp: string
+}
+
+export interface ReturnsRecord {
+  symbol: string
+  fincode: string
+  isin: string
+  latest_date: string
+  latest_close: number
+  latest_volume: number
+  turnover: number
+  returns_1_week: number
+  returns_1_month: number
+  returns_3_months: number
+  returns_6_months: number
+  returns_9_months: number
+  returns_1_year: number
+  returns_3_years: number
+  returns_5_years: number
+  raw_score: number
+  normalized_score: number
+}
+
+export interface ReturnsFileDataResponse {
+  status: string
+  message: string
+  data: ReturnsRecord[]
+  total_count: number
+  source_file: string
+  file_size_mb: number
+  last_modified: string
+  source: string
+  timestamp: string
+}
+
+// =============================================================================
 // END OF TYPES
 // ============================================================================= 

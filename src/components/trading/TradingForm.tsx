@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, TrendingUp, TrendingDown, Calculator, Info } from 'lucide-react'
 import { API_BASE_URL } from '@/constants'
+import { ApiClient } from '@/services/api-client.service'
 
 interface TradingFormProps {
   selectedStock: any
@@ -120,27 +121,18 @@ export default function TradingForm({ selectedStock, onOrderPlaced }: TradingFor
       // Store order data for potential retry
       setLastOrderData(orderData)
 
-      const response = await fetch(`${API_BASE_URL}/api/trading/buy-stock`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(orderData)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        
+      const result = await ApiClient.post('/api/trading/buy-stock', orderData)
+      
+      if (result.error) {
         // Check if this is the specific backend validation error
-        if (errorData.detail && errorData.detail.includes('order_id') && errorData.detail.includes('string_type')) {
+        if (result.error.includes('order_id') && result.error.includes('string_type')) {
           throw new Error('Backend validation error: order_id type mismatch. This is a known issue being resolved by the backend team.')
         }
         
-        throw new Error(errorData.detail || 'Failed to place order')
+        throw new Error(result.error)
       }
 
-      const data: OrderResponse = await response.json()
+      const data: OrderResponse = result.data
       
       // Log the response for debugging
       console.log('📊 TradingForm - Order response data:', data)
@@ -195,24 +187,16 @@ export default function TradingForm({ selectedStock, onOrderPlaced }: TradingFor
       setLoading(true)
       
       try {
-        const response = await fetch(`${API_BASE_URL}/api/trading/buy-stock`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(lastOrderData)
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          if (errorData.detail && errorData.detail.includes('order_id') && errorData.detail.includes('string_type')) {
+        const result = await ApiClient.post('/api/trading/buy-stock', lastOrderData)
+        
+        if (result.error) {
+          if (result.error.includes('order_id') && result.error.includes('string_type')) {
             throw new Error('Backend validation error still persists. Please try again later or contact support.')
           }
-          throw new Error(errorData.detail || 'Retry failed')
+          throw new Error(result.error)
         }
 
-        const data: OrderResponse = await response.json()
+        const data: OrderResponse = result.data
         
         if (data.status === 'success') {
           const orderId = typeof data.order_id === 'number' ? data.order_id.toString() : data.order_id

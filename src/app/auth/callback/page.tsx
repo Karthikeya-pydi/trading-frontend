@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Loader2, CheckCircle, XCircle } from "lucide-react"
-import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
+import { API_BASE_URL, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from "@/constants"
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -29,10 +29,10 @@ function AuthCallbackContent() {
         }
 
         if (accessToken) {
-          // Store both tokens
-          localStorage.setItem('token', accessToken)
+          // Store both tokens using constants
+          localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, accessToken)
           if (refreshToken) {
-            localStorage.setItem('refresh_token', refreshToken)
+            localStorage.setItem(LOCAL_STORAGE_KEYS.REFRESH_TOKEN, refreshToken)
           }
           console.log('✅ Tokens stored successfully')
           

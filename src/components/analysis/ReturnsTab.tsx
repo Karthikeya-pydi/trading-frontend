@@ -26,6 +26,7 @@ import {
   Download
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
+import { MarketDataService } from "@/services/market-data.service"
 import { 
   Select,
   SelectContent,
@@ -33,6 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { 
+  ReturnsFilesListResponse,
+  ReturnsFileDataResponse,
+  ReturnsFile
+} from "@/types"
 
 // Returns data types
 interface StockReturns {
@@ -109,6 +115,11 @@ export default function ReturnsTab() {
   const [sortField, setSortField] = useState<keyof StockReturns>("symbol")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
+  // File selection state
+  const [availableFiles, setAvailableFiles] = useState<ReturnsFile[]>([])
+  const [selectedFile, setSelectedFile] = useState<string>("")
+  const [filesLoading, setFilesLoading] = useState(false)
+
   // Nifty indices state
   const [niftyIndices, setNiftyIndices] = useState<NiftyIndex[]>([])
   const [selectedIndex, setSelectedIndex] = useState<string>("")
@@ -131,6 +142,85 @@ export default function ReturnsTab() {
     { key: "3_Years", label: "3 Years" },
     { key: "5_Years", label: "5 Years" }
   ]
+
+  // Fetch available returns files
+  const fetchAvailableFiles = useCallback(async () => {
+    setFilesLoading(true)
+    try {
+      const filesResponse = await MarketDataService.getReturnsFiles()
+      setAvailableFiles(filesResponse.files)
+      
+      // Auto-select the most recent file if none selected
+      if (!selectedFile && filesResponse.files.length > 0) {
+        const sortedFiles = filesResponse.files.sort((a, b) => 
+          new Date(b.last_modified).getTime() - new Date(a.last_modified).getTime()
+        )
+        const mostRecentFile = sortedFiles[0]
+        console.log('Auto-selecting file:', { 
+          filename: mostRecentFile.filename, 
+          type: typeof mostRecentFile.filename,
+          fileObject: mostRecentFile 
+        })
+        
+        // Ensure we have a valid filename string
+        if (mostRecentFile && typeof mostRecentFile.filename === 'string' && mostRecentFile.filename.trim()) {
+          setSelectedFile(mostRecentFile.filename)
+        } else {
+          console.error('Invalid file object for auto-selection:', mostRecentFile)
+          setError('No valid files available for auto-selection')
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching returns files:', err)
+      setError(`Failed to fetch returns files: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setFilesLoading(false)
+    }
+  }, [selectedFile])
+
+  // Fetch returns data from selected file
+  const fetchReturnsData = useCallback(async (filename?: string) => {
+    const fileToFetch = filename || selectedFile
+    console.log('fetchReturnsData called with:', { filename, selectedFile, fileToFetch, type: typeof fileToFetch })
+    
+    // Validate fileToFetch is a valid string
+    if (!fileToFetch || typeof fileToFetch !== 'string' || !fileToFetch.trim()) {
+      console.error('Invalid fileToFetch value:', fileToFetch)
+      setError('No valid file selected for fetching returns data')
+      return
+    }
+
+    setLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      const data = await MarketDataService.getReturnsFileData(fileToFetch)
+      setReturnsData(data)
+      setSuccess(`Returns data retrieved successfully from ${fileToFetch}`)
+    } catch (err) {
+      console.error('Error fetching returns data:', err)
+      setError(`Failed to fetch returns data: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setReturnsData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedFile])
+
+  // Handle file selection change
+  const handleFileChange = (filename: string) => {
+    console.log('handleFileChange called with:', { filename, type: typeof filename })
+    
+    // Validate the filename
+    if (!filename || typeof filename !== 'string' || !filename.trim()) {
+      console.error('Invalid filename in handleFileChange:', filename)
+      setError('Invalid file selection')
+      return
+    }
+    
+    setSelectedFile(filename)
+    setCurrentPage(1) // Reset to first page when changing files
+  }
 
   // Fetch Nifty indices from API
   const fetchNiftyIndices = useCallback(async () => {
@@ -209,59 +299,17 @@ export default function ReturnsTab() {
     }
   }, [])
 
-  // Fetch returns data from API
-  const fetchReturnsData = useCallback(async () => {
-    setLoading(true)
-    setError("")
-    setSuccess("")
+  // Load files and data on component mount
+  useEffect(() => {
+    fetchAvailableFiles()
+  }, [fetchAvailableFiles])
 
-    try {
-      const token = localStorage.getItem('token')
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      // Try with query parameters first, fallback to basic endpoint
-      const queryParams = new URLSearchParams({
-        include_turnover: 'true',
-        include_scores: 'true',
-        // include_raw_score: 'true',  // Commented out for now
-        include_normalized_score: 'true'
-      })
-      
-      let response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RETURNS_ALL}?${queryParams}`, {
-        headers
-      })
-      
-      // If the query parameters don't work, try without them
-      if (!response.ok) {
-        console.log('Query parameters not supported, trying basic endpoint...')
-        response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RETURNS_ALL}`, {
-          headers
-        })
-      }
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setReturnsData(data)
-        setSuccess("Returns data retrieved successfully")
-      } else {
-        setError(data.detail || "Failed to fetch returns data")
-        setReturnsData(null)
-      }
-    } catch (err) {
-      console.error('Error fetching returns data:', err)
-      setError(`Failed to fetch returns data: ${err instanceof Error ? err.message : 'Unknown error'}`)
-      setReturnsData(null)
-    } finally {
-      setLoading(false)
+  // Fetch data when selected file changes
+  useEffect(() => {
+    if (selectedFile && typeof selectedFile === 'string' && selectedFile.trim()) {
+      fetchReturnsData(selectedFile)
     }
-  }, [])
+  }, [selectedFile, fetchReturnsData])
 
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
@@ -508,11 +556,10 @@ export default function ReturnsTab() {
     }
   }
 
-  // Auto-refresh on mount
+  // Auto-refresh Nifty indices on mount
   useEffect(() => {
-    fetchReturnsData()
     fetchNiftyIndices()
-  }, [fetchReturnsData, fetchNiftyIndices])
+  }, [fetchNiftyIndices])
 
   return (
     <div className="space-y-6">
@@ -523,13 +570,22 @@ export default function ReturnsTab() {
         </div>
         <div className="flex space-x-3">
           <Button
-            onClick={fetchReturnsData}
+            onClick={() => fetchAvailableFiles()}
             variant="outline"
             size="sm"
-            disabled={loading}
+            disabled={filesLoading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            <RefreshCw className={`h-4 w-4 mr-2 ${filesLoading ? 'animate-spin' : ''}`} />
+            Refresh Files
+          </Button>
+          <Button
+            onClick={() => fetchReturnsData()}
+            variant="outline"
+            size="sm"
+            disabled={loading || !selectedFile}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Data
           </Button>
         </div>
       </div>
@@ -825,16 +881,40 @@ export default function ReturnsTab() {
                   </Badge>
                 )}
               </div>
-              <Button
-                onClick={exportToCSV}
-                variant="outline"
-                size="sm"
-                disabled={!filteredAndSortedData.length}
-                className="flex items-center space-x-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Download CSV</span>
-              </Button>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="file-select-inline" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    File:
+                  </Label>
+                  <Select value={selectedFile} onValueChange={handleFileChange} disabled={filesLoading}>
+                    <SelectTrigger id="file-select-inline" className="w-48">
+                      <SelectValue placeholder={filesLoading ? "Loading..." : "Select file"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableFiles.map((file) => (
+                        <SelectItem key={file.filename} value={file.filename}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{file.filename}</span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(file.last_modified).toLocaleDateString()} • {file.size_mb} MB
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={exportToCSV}
+                  variant="outline"
+                  size="sm"
+                  disabled={!filteredAndSortedData.length}
+                  className="flex items-center space-x-2"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download CSV</span>
+                </Button>
+              </div>
             </div>
             <CardDescription>
               {selectedIndex ? (

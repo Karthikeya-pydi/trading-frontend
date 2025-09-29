@@ -33,10 +33,10 @@ export class ApiClient {
         headers
       })
 
-      // Check if token was refreshed
-      const newAccessToken = response.headers.get('X-New-Access-Token')
-      const tokenRefreshed = response.headers.get('X-Token-Refreshed') === 'true'
-      const iiflSessionsRefreshed = response.headers.get('X-IIFL-Sessions-Refreshed') === 'true'
+      // Check if token was refreshed (backend sends lowercase headers)
+      const newAccessToken = response.headers.get('x-new-access-token')
+      const tokenRefreshed = response.headers.get('x-token-refreshed') === 'true'
+      const iiflSessionsRefreshed = response.headers.get('x-iifl-sessions-refreshed') === 'true'
 
       if (newAccessToken) {
         localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, newAccessToken)
