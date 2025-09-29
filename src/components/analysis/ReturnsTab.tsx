@@ -155,8 +155,20 @@ export default function ReturnsTab() {
         const sortedFiles = filesResponse.files.sort((a, b) => 
           new Date(b.last_modified).getTime() - new Date(a.last_modified).getTime()
         )
-        console.log('Auto-selecting file:', { filename: sortedFiles[0].filename, type: typeof sortedFiles[0].filename })
-        setSelectedFile(sortedFiles[0].filename)
+        const mostRecentFile = sortedFiles[0]
+        console.log('Auto-selecting file:', { 
+          filename: mostRecentFile.filename, 
+          type: typeof mostRecentFile.filename,
+          fileObject: mostRecentFile 
+        })
+        
+        // Ensure we have a valid filename string
+        if (mostRecentFile && typeof mostRecentFile.filename === 'string' && mostRecentFile.filename.trim()) {
+          setSelectedFile(mostRecentFile.filename)
+        } else {
+          console.error('Invalid file object for auto-selection:', mostRecentFile)
+          setError('No valid files available for auto-selection')
+        }
       }
     } catch (err) {
       console.error('Error fetching returns files:', err)
@@ -171,15 +183,10 @@ export default function ReturnsTab() {
     const fileToFetch = filename || selectedFile
     console.log('fetchReturnsData called with:', { filename, selectedFile, fileToFetch, type: typeof fileToFetch })
     
-    if (!fileToFetch) {
-      console.log('No file to fetch, returning early')
-      return
-    }
-
-    // Ensure we have a string
-    if (typeof fileToFetch !== 'string') {
-      console.error('fileToFetch is not a string:', fileToFetch)
-      setError('Invalid file selection')
+    // Validate fileToFetch is a valid string
+    if (!fileToFetch || typeof fileToFetch !== 'string' || !fileToFetch.trim()) {
+      console.error('Invalid fileToFetch value:', fileToFetch)
+      setError('No valid file selected for fetching returns data')
       return
     }
 
@@ -203,6 +210,14 @@ export default function ReturnsTab() {
   // Handle file selection change
   const handleFileChange = (filename: string) => {
     console.log('handleFileChange called with:', { filename, type: typeof filename })
+    
+    // Validate the filename
+    if (!filename || typeof filename !== 'string' || !filename.trim()) {
+      console.error('Invalid filename in handleFileChange:', filename)
+      setError('Invalid file selection')
+      return
+    }
+    
     setSelectedFile(filename)
     setCurrentPage(1) // Reset to first page when changing files
   }
@@ -291,7 +306,7 @@ export default function ReturnsTab() {
 
   // Fetch data when selected file changes
   useEffect(() => {
-    if (selectedFile) {
+    if (selectedFile && typeof selectedFile === 'string' && selectedFile.trim()) {
       fetchReturnsData(selectedFile)
     }
   }, [selectedFile, fetchReturnsData])
@@ -541,11 +556,10 @@ export default function ReturnsTab() {
     }
   }
 
-  // Auto-refresh on mount
+  // Auto-refresh Nifty indices on mount
   useEffect(() => {
-    fetchReturnsData()
     fetchNiftyIndices()
-  }, [fetchReturnsData, fetchNiftyIndices])
+  }, [fetchNiftyIndices])
 
   return (
     <div className="space-y-6">
