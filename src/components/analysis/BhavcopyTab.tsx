@@ -23,6 +23,19 @@ import {
   ChevronsRight
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
+import { MarketDataService } from "@/services/market-data.service"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { 
+  BhavcopyFilesListResponse,
+  BhavcopyFileDataResponse,
+  BhavcopyFile
+} from "@/types"
 
 // Bhavcopy data types
 interface BhavcopyRecord {
@@ -62,36 +75,47 @@ export default function BhavcopyTab() {
   const [sortField, setSortField] = useState<keyof BhavcopyRecord>("SYMBOL")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  // Fetch bhavcopy data from API
-  const fetchBhavcopyData = useCallback(async () => {
+  // File selection state
+  const [availableFiles, setAvailableFiles] = useState<BhavcopyFile[]>([])
+  const [selectedFile, setSelectedFile] = useState<string>("")
+  const [filesLoading, setFilesLoading] = useState(false)
+
+  // Fetch available bhavcopy files
+  const fetchAvailableFiles = useCallback(async () => {
+    setFilesLoading(true)
+    try {
+      const filesResponse = await MarketDataService.getBhavcopyFiles()
+      setAvailableFiles(filesResponse.files)
+      
+      // Auto-select the most recent file if none selected
+      if (!selectedFile && filesResponse.files.length > 0) {
+        const sortedFiles = filesResponse.files.sort((a, b) => 
+          new Date(b.last_modified).getTime() - new Date(a.last_modified).getTime()
+        )
+        setSelectedFile(sortedFiles[0].filename)
+      }
+    } catch (err) {
+      console.error('Error fetching bhavcopy files:', err)
+      setError(`Failed to fetch bhavcopy files: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setFilesLoading(false)
+    }
+  }, [selectedFile])
+
+  // Fetch bhavcopy data from selected file
+  const fetchBhavcopyData = useCallback(async (filename?: string) => {
+    const fileToFetch = filename || selectedFile
+    if (!fileToFetch) return
+
     setLoading(true)
     setError("")
     setSuccess("")
 
     try {
-      const token = localStorage.getItem('token')
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.BHAVCOPY_DATA}`, {
-        headers
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setBhavcopyData(data)
-        setSuccess("Bhavcopy data retrieved successfully")
-        setLastUpdated(new Date())
-      } else {
-        setError(data.message || "Failed to fetch bhavcopy data")
-        setBhavcopyData(null)
-      }
+      const data = await MarketDataService.getBhavcopyFileData(fileToFetch)
+      setBhavcopyData(data)
+      setSuccess(`Bhavcopy data retrieved successfully from ${fileToFetch}`)
+      setLastUpdated(new Date())
     } catch (err) {
       console.error('Error fetching bhavcopy data:', err)
       setError(`Failed to fetch bhavcopy data: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -99,7 +123,7 @@ export default function BhavcopyTab() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedFile])
 
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
@@ -216,10 +240,23 @@ export default function BhavcopyTab() {
     return value.toLocaleString()
   }
 
-  // Auto-refresh on mount
+  // Load files and data on component mount
   useEffect(() => {
-    fetchBhavcopyData()
-  }, [fetchBhavcopyData])
+    fetchAvailableFiles()
+  }, [fetchAvailableFiles])
+
+  // Fetch data when selected file changes
+  useEffect(() => {
+    if (selectedFile) {
+      fetchBhavcopyData(selectedFile)
+    }
+  }, [selectedFile, fetchBhavcopyData])
+
+  // Handle file selection change
+  const handleFileChange = (filename: string) => {
+    setSelectedFile(filename)
+    setCurrentPage(1) // Reset to first page when changing files
+  }
 
   return (
     <div className="space-y-6">
@@ -231,20 +268,25 @@ export default function BhavcopyTab() {
         </div>
         <div className="flex space-x-3">
           <Button
-            onClick={fetchBhavcopyData}
+            onClick={() => fetchAvailableFiles()}
             variant="outline"
             size="sm"
-            disabled={loading}
+            disabled={filesLoading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            {loading ? 'Refreshing...' : 'Refresh'}
+            <RefreshCw className={`h-4 w-4 mr-2 ${filesLoading ? 'animate-spin' : ''}`} />
+            Refresh Files
+          </Button>
+          <Button
+            onClick={() => fetchBhavcopyData()}
+            variant="outline"
+            size="sm"
+            disabled={loading || !selectedFile}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Data
           </Button>
         </div>
       </div>
-
-
-
-
 
       {/* Search Section */}
       {bhavcopyData && bhavcopyData.data && bhavcopyData.data.length > 0 && (
@@ -321,10 +363,36 @@ export default function BhavcopyTab() {
       {bhavcopyData && filteredAndSortedData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-green-600" />
-              <span>Market Data Table</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Activity className="h-5 w-5 text-green-600" />
+                <span className="text-xl font-semibold">Market Data Table</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="file-select-inline" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    File:
+                  </Label>
+                  <Select value={selectedFile} onValueChange={handleFileChange} disabled={filesLoading}>
+                    <SelectTrigger id="file-select-inline" className="w-48">
+                      <SelectValue placeholder={filesLoading ? "Loading..." : "Select file"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableFiles.map((file) => (
+                        <SelectItem key={file.filename} value={file.filename}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{file.filename}</span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(file.last_modified).toLocaleDateString()} • {file.size_mb} MB
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
             <CardDescription>
               {filteredAndSortedData.length > 0 
                 ? `Showing ${startIndex + 1}-${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} records`
