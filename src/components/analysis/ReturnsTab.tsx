@@ -37,37 +37,12 @@ import {
 import { 
   ReturnsFilesListResponse,
   ReturnsFileDataResponse,
-  ReturnsFile
+  ReturnsFile,
+  ReturnsRecord
 } from "@/types"
 
-// Returns data types
-interface StockReturns {
-  symbol: string
-  fincode: string
-  isin: string
-  latest_date: string
-  latest_close: number
-  latest_volume: number
-  turnover: number | null
-  // raw_score: number | null
-  normalized_score: number | null
-  returns_1_week: number | null
-  returns_1_month: number | null
-  returns_3_months: number | null
-  returns_6_months: number | null
-  returns_9_months: number | null
-  returns_1_year: number | null
-  returns_3_years: number | null
-  returns_5_years: number | null
-}
-
-interface ReturnsResponse {
-  status: string
-  data: StockReturns[]
-  total_count: number
-  source_file: string
-  timestamp: string
-}
+// Use the new ReturnsRecord type from types/index.ts
+type StockReturns = ReturnsRecord
 
 // Nifty indices data types
 interface NiftyIndex {
@@ -105,7 +80,7 @@ interface NiftyIndexConstituentsResponse {
 }
 
 export default function ReturnsTab() {
-  const [returnsData, setReturnsData] = useState<ReturnsResponse | null>(null)
+  const [returnsData, setReturnsData] = useState<ReturnsFileDataResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -141,6 +116,33 @@ export default function ReturnsTab() {
     { key: "1_Year", label: "1 Year" },
     { key: "3_Years", label: "3 Years" },
     { key: "5_Years", label: "5 Years" }
+  ]
+
+  const scoreChangePeriods = [
+    { key: "1_week", label: "1W Score %" },
+    { key: "1_month", label: "1M Score %" },
+    { key: "3_months", label: "3M Score %" },
+    { key: "6_months", label: "6M Score %" },
+    { key: "9_months", label: "9M Score %" },
+    { key: "1_year", label: "1Y Score %" }
+  ]
+
+  const signPatternPeriods = [
+    { key: "1_week", label: "1W Pattern" },
+    { key: "1_month", label: "1M Pattern" },
+    { key: "3_months", label: "3M Pattern" },
+    { key: "6_months", label: "6M Pattern" },
+    { key: "9_months", label: "9M Pattern" },
+    { key: "1_year", label: "1Y Pattern" }
+  ]
+
+  const historicalScorePeriods = [
+    { key: "1_week_ago", label: "1W Ago Score" },
+    { key: "1_month_ago", label: "1M Ago Score" },
+    { key: "3_months_ago", label: "3M Ago Score" },
+    { key: "6_months_ago", label: "6M Ago Score" },
+    { key: "9_months_ago", label: "9M Ago Score" },
+    { key: "1_year_ago", label: "1Y Ago Score" }
   ]
 
   // Fetch available returns files
@@ -206,6 +208,7 @@ export default function ReturnsTab() {
       setLoading(false)
     }
   }, [selectedFile])
+
 
   // Handle file selection change
   const handleFileChange = (filename: string) => {
@@ -445,6 +448,45 @@ export default function ReturnsTab() {
     }
   }
 
+  // Get score change value for selected period
+  const getScoreChangeValue = (record: StockReturns, period: string) => {
+    switch (period) {
+      case "1_week": return record.score_change_1_week
+      case "1_month": return record.score_change_1_month
+      case "3_months": return record.score_change_3_months
+      case "6_months": return record.score_change_6_months
+      case "9_months": return record.score_change_9_months
+      case "1_year": return record.score_change_1_year
+      default: return null
+    }
+  }
+
+  // Get sign pattern value for selected period
+  const getSignPatternValue = (record: StockReturns, period: string) => {
+    switch (period) {
+      case "1_week": return record.sign_pattern_1_week
+      case "1_month": return record.sign_pattern_1_month
+      case "3_months": return record.sign_pattern_3_months
+      case "6_months": return record.sign_pattern_6_months
+      case "9_months": return record.sign_pattern_9_months
+      case "1_year": return record.sign_pattern_1_year
+      default: return null
+    }
+  }
+
+  // Get historical raw score value for selected period
+  const getHistoricalScoreValue = (record: StockReturns, period: string) => {
+    switch (period) {
+      case "1_week_ago": return record.raw_score_1_week_ago
+      case "1_month_ago": return record.raw_score_1_month_ago
+      case "3_months_ago": return record.raw_score_3_months_ago
+      case "6_months_ago": return record.raw_score_6_months_ago
+      case "9_months_ago": return record.raw_score_9_months_ago
+      case "1_year_ago": return record.raw_score_1_year_ago
+      default: return null
+    }
+  }
+
   // Get return color and icon
   const getReturnColor = (value: number | null) => {
     if (value === null) return 'text-gray-500'
@@ -474,6 +516,32 @@ export default function ReturnsTab() {
     return value.toFixed(2)
   }
 
+  // Format score change value
+  const formatScoreChange = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '-'
+    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+  }
+
+  // Format sign pattern value
+  const formatSignPattern = (value: string | null | undefined) => {
+    if (value === null || value === undefined) return '-'
+    return value
+  }
+
+  // Get score change color
+  const getScoreChangeColor = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'text-gray-500'
+    return value >= 0 ? 'text-green-600' : 'text-red-600'
+  }
+
+  // Get sign pattern color
+  const getSignPatternColor = (value: string | null | undefined) => {
+    if (value === null || value === undefined) return 'text-gray-500'
+    if (value.includes('+')) return 'text-green-600'
+    if (value.includes('-')) return 'text-red-600'
+    return 'text-gray-600'
+  }
+
   // CSV export function
   const exportToCSV = () => {
     if (!filteredAndSortedData.length) return
@@ -487,7 +555,7 @@ export default function ReturnsTab() {
       'Latest Close',
       'Latest Volume',
       'Turnover',
-      'Normalized Score',
+      'Raw Score',
       '1 Week Return',
       '1 Month Return',
       '3 Months Return',
@@ -495,7 +563,25 @@ export default function ReturnsTab() {
       '9 Months Return',
       '1 Year Return',
       '3 Years Return',
-      '5 Years Return'
+      '5 Years Return',
+      '1W Score %',
+      '1M Score %',
+      '3M Score %',
+      '6M Score %',
+      '9M Score %',
+      '1Y Score %',
+      '1W Sign Pattern',
+      '1M Sign Pattern',
+      '3M Sign Pattern',
+      '6M Sign Pattern',
+      '9M Sign Pattern',
+      '1Y Sign Pattern',
+      '1W Ago Score',
+      '1M Ago Score',
+      '3M Ago Score',
+      '6M Ago Score',
+      '9M Ago Score',
+      '1Y Ago Score'
     ]
 
     // Convert data to CSV format
@@ -507,7 +593,7 @@ export default function ReturnsTab() {
       record.latest_close,
       record.latest_volume,
       record.turnover || '',
-      record.normalized_score || '',
+      record.raw_score || '',
       record.returns_1_week || '',
       record.returns_1_month || '',
       record.returns_3_months || '',
@@ -515,7 +601,25 @@ export default function ReturnsTab() {
       record.returns_9_months || '',
       record.returns_1_year || '',
       record.returns_3_years || '',
-      record.returns_5_years || ''
+      record.returns_5_years || '',
+      record.score_change_1_week || '',
+      record.score_change_1_month || '',
+      record.score_change_3_months || '',
+      record.score_change_6_months || '',
+      record.score_change_9_months || '',
+      record.score_change_1_year || '',
+      record.sign_pattern_1_week || '',
+      record.sign_pattern_1_month || '',
+      record.sign_pattern_3_months || '',
+      record.sign_pattern_6_months || '',
+      record.sign_pattern_9_months || '',
+      record.sign_pattern_1_year || '',
+      record.raw_score_1_week_ago || '',
+      record.raw_score_1_month_ago || '',
+      record.raw_score_3_months_ago || '',
+      record.raw_score_6_months_ago || '',
+      record.raw_score_9_months_ago || '',
+      record.raw_score_1_year_ago || ''
     ])
 
     // Create CSV content
@@ -920,7 +1024,7 @@ export default function ReturnsTab() {
               {selectedIndex ? (
                 <>
                   Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} stocks from {selectedIndex}
-                  {returnsData.data.length !== filteredAndSortedData.length && (
+                  {returnsData?.data && returnsData.data.length !== filteredAndSortedData.length && (
                     <span className="text-gray-500 ml-2">
                       (filtered from {returnsData.data.length} total stocks)
                     </span>
@@ -934,6 +1038,11 @@ export default function ReturnsTab() {
               ) : (
                 <>
                   Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} records
+                  {returnsData?.data && returnsData.data.length !== filteredAndSortedData.length && (
+                    <span className="text-gray-500 ml-2">
+                      (filtered from {returnsData.data.length} total stocks)
+                    </span>
+                  )}
                   {returnsData?.timestamp && (
                     <span className="text-gray-500 ml-4">
                       • Updated data as of {new Date(new Date(returnsData.timestamp).getTime() - 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
@@ -1016,7 +1125,7 @@ export default function ReturnsTab() {
                         )}
                       </div>
                     </th>
-                    {/* <th 
+                    <th 
                       className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("raw_score")}
                     >
@@ -1026,18 +1135,18 @@ export default function ReturnsTab() {
                           <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                         )}
                       </div>
-                    </th> */}
-                    <th 
-                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("normalized_score")}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Score</span>
-                        {sortField === "normalized_score" && (
-                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
-                        )}
-                      </div>
                     </th>
+                    {/* Historical Score Columns */}
+                    {historicalScorePeriods.map((period) => (
+                      <th 
+                        key={`historical-score-header-${period.key}`}
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>{period.label}</span>
+                        </div>
+                      </th>
+                    ))}
                                          {timePeriods.map((period) => (
                        <th 
                          key={`header-${period.key}`}
@@ -1049,6 +1158,28 @@ export default function ReturnsTab() {
                           {sortField === `returns_${period.key.toLowerCase()}` && (
                             <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                           )}
+                        </div>
+                      </th>
+                    ))}
+                    {/* Score Change Columns */}
+                    {scoreChangePeriods.map((period) => (
+                      <th 
+                        key={`score-change-header-${period.key}`}
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>{period.label}</span>
+                        </div>
+                      </th>
+                    ))}
+                    {/* Sign Pattern Columns */}
+                    {signPatternPeriods.map((period) => (
+                      <th 
+                        key={`sign-pattern-header-${period.key}`}
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>{period.label}</span>
                         </div>
                       </th>
                     ))}
@@ -1072,12 +1203,20 @@ export default function ReturnsTab() {
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {formatTurnover(record.turnover)}
                       </td>
-                      {/* <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {formatScore(record.raw_score)}
-                      </td> */}
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {formatScore(record.normalized_score)}
+                        {formatScore(record.raw_score)}
                       </td>
+                      {/* Historical Score Data Cells */}
+                      {historicalScorePeriods.map((period) => {
+                        const historicalScoreValue = getHistoricalScoreValue(record, period.key)
+                        return (
+                          <td key={`${record.symbol}-historical-score-${period.key}`} className="border border-gray-200 px-3 py-2 text-sm">
+                            <div className="flex items-center space-x-1">
+                              <span className="font-medium text-gray-600">{formatScore(historicalScoreValue)}</span>
+                            </div>
+                          </td>
+                        )
+                      })}
                                              {timePeriods.map((period) => {
                          const returnValue = getReturnValue(record, period.key)
                          return (
@@ -1085,6 +1224,28 @@ export default function ReturnsTab() {
                             <div className={`flex items-center space-x-1 ${getReturnColor(returnValue)}`}>
                               {getReturnIcon(returnValue)}
                               <span className="font-medium">{formatReturn(returnValue)}</span>
+                            </div>
+                          </td>
+                        )
+                      })}
+                      {/* Score Change Data Cells */}
+                      {scoreChangePeriods.map((period) => {
+                        const scoreChangeValue = getScoreChangeValue(record, period.key)
+                        return (
+                          <td key={`${record.symbol}-score-change-${period.key}`} className="border border-gray-200 px-3 py-2 text-sm">
+                            <div className={`flex items-center space-x-1 ${getScoreChangeColor(scoreChangeValue)}`}>
+                              <span className="font-medium">{formatScoreChange(scoreChangeValue)}</span>
+                            </div>
+                          </td>
+                        )
+                      })}
+                      {/* Sign Pattern Data Cells */}
+                      {signPatternPeriods.map((period) => {
+                        const signPatternValue = getSignPatternValue(record, period.key)
+                        return (
+                          <td key={`${record.symbol}-sign-pattern-${period.key}`} className="border border-gray-200 px-3 py-2 text-sm">
+                            <div className={`flex items-center space-x-1 ${getSignPatternColor(signPatternValue)}`}>
+                              <span className="font-medium">{formatSignPattern(signPatternValue)}</span>
                             </div>
                           </td>
                         )

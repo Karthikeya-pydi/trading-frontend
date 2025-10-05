@@ -88,6 +88,9 @@ export const API_ENDPOINTS = {
   
   // Returns Data (New endpoints)
   RETURNS_ALL: '/api/returns/all',
+  RETURNS_FILES: '/api/returns/files',
+  RETURNS_FILE: '/api/returns/file',
+  RETURNS_STOCK: '/api/returns',
   
   // Stock Analysis Data (New endpoints)
   STOCK_ANALYSIS_SEARCH: '/api/stock-analysis/search',

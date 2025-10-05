@@ -4,7 +4,9 @@ import {
   BhavcopyFilesListResponse,
   BhavcopyFileDataResponse,
   ReturnsFilesListResponse,
-  ReturnsFileDataResponse
+  ReturnsFileDataResponse,
+  ReturnsStockResponse,
+  ReturnsAllResponse
 } from '@/types'
 
 export class MarketDataService {
@@ -213,6 +215,120 @@ export class MarketDataService {
       return response
     } catch (error) {
       console.error('❌ MarketDataService - Error fetching high turnover stocks:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get individual stock returns data
+   */
+  static async getStockReturns(symbol: string): Promise<ReturnsStockResponse> {
+    try {
+      console.log('📈 MarketDataService - Fetching stock returns:', symbol)
+      const response = await this.apiCall<ReturnsStockResponse>(`/api/returns/${symbol}`)
+      console.log('✅ MarketDataService - Stock returns response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ MarketDataService - Error fetching stock returns:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get all stocks returns data with optional sorting and filtering
+   */
+  static async getAllReturnsData(options?: {
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+    limit?: number
+  }): Promise<ReturnsAllResponse> {
+    try {
+      console.log('📈 MarketDataService - Fetching all returns data:', options)
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams()
+      if (options?.sortBy) queryParams.append('sort_by', options.sortBy)
+      if (options?.sortOrder) queryParams.append('sort_order', options.sortOrder)
+      if (options?.limit) queryParams.append('limit', options.limit.toString())
+      
+      const queryString = queryParams.toString()
+      const endpoint = `/api/returns/all${queryString ? `?${queryString}` : ''}`
+      
+      const response = await this.apiCall<ReturnsAllResponse>(endpoint)
+      console.log('✅ MarketDataService - All returns data response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ MarketDataService - Error fetching all returns data:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get top performing stocks by returns from all data
+   */
+  static async getTopPerformingStocksFromAll(
+    period: '1_week' | '1_month' | '3_months' | '6_months' | '9_months' | '1_year' | '3_years' | '5_years' = '1_year',
+    limit: number = 50
+  ): Promise<ReturnsAllResponse> {
+    try {
+      console.log('🏆 MarketDataService - Fetching top performing stocks from all data:', { period, limit })
+      
+      const response = await this.getAllReturnsData({
+        sortBy: `returns_${period}`,
+        sortOrder: 'desc',
+        limit
+      })
+      
+      console.log('✅ MarketDataService - Top performing stocks from all data response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ MarketDataService - Error fetching top performing stocks from all data:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get stocks with highest turnover from all data
+   */
+  static async getHighTurnoverStocksFromAll(
+    limit: number = 50
+  ): Promise<ReturnsAllResponse> {
+    try {
+      console.log('💰 MarketDataService - Fetching high turnover stocks from all data:', { limit })
+      
+      const response = await this.getAllReturnsData({
+        sortBy: 'turnover',
+        sortOrder: 'desc',
+        limit
+      })
+      
+      console.log('✅ MarketDataService - High turnover stocks from all data response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ MarketDataService - Error fetching high turnover stocks from all data:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get stocks with highest raw scores
+   */
+  static async getTopScoredStocks(
+    limit: number = 50
+  ): Promise<ReturnsAllResponse> {
+    try {
+      console.log('🎯 MarketDataService - Fetching top scored stocks:', { limit })
+      
+      const response = await this.getAllReturnsData({
+        sortBy: 'raw_score',
+        sortOrder: 'desc',
+        limit
+      })
+      
+      console.log('✅ MarketDataService - Top scored stocks response:', response)
+      return response
+    } catch (error) {
+      console.error('❌ MarketDataService - Error fetching top scored stocks:', error)
       throw error
     }
   }

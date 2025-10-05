@@ -10,7 +10,7 @@ import BhavcopyTab from "@/components/analysis/BhavcopyTab"
 import StockAnalysisTab from "@/components/analysis/StockAnalysisTab"
 
 export default function AnalysisPage() {
-  const [activeTab, setActiveTab] = useState("stock-analysis")
+  const [activeTab, setActiveTab] = useState("returns")
 
   return (
     <Layout title="Market Analysis">
@@ -39,13 +39,13 @@ export default function AnalysisPage() {
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="stock-analysis" className="flex items-center space-x-2">
-                  <Search className="h-4 w-4" />
-                  <span>Stock Analysis</span>
-                </TabsTrigger>
                 <TabsTrigger value="returns" className="flex items-center space-x-2">
                   <TrendingUp className="h-4 w-4" />
                   <span>Stock Returns</span>
+                </TabsTrigger>
+                <TabsTrigger value="stock-analysis" className="flex items-center space-x-2">
+                  <Search className="h-4 w-4" />
+                  <span>Stock Analysis</span>
                 </TabsTrigger>
                 <TabsTrigger value="bhavcopy" className="flex items-center space-x-2">
                   <Activity className="h-4 w-4" />
@@ -53,12 +53,12 @@ export default function AnalysisPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="stock-analysis" className="mt-6">
-                <StockAnalysisTab />
-              </TabsContent>
-
               <TabsContent value="returns" className="mt-6">
                 <ReturnsTab />
+              </TabsContent>
+
+              <TabsContent value="stock-analysis" className="mt-6">
+                <StockAnalysisTab />
               </TabsContent>
 
               <TabsContent value="bhavcopy" className="mt-6">
