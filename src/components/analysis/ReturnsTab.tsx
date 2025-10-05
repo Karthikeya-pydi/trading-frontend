@@ -674,22 +674,18 @@ export default function ReturnsTab() {
         </div>
         <div className="flex space-x-3">
           <Button
-            onClick={() => fetchAvailableFiles()}
+            onClick={async () => {
+              await fetchAvailableFiles()
+              if (selectedFile) {
+                await fetchReturnsData()
+              }
+            }}
             variant="outline"
             size="sm"
-            disabled={filesLoading}
+            disabled={filesLoading || loading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${filesLoading ? 'animate-spin' : ''}`} />
-            Refresh Files
-          </Button>
-          <Button
-            onClick={() => fetchReturnsData()}
-            variant="outline"
-            size="sm"
-            disabled={loading || !selectedFile}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh Data
+            <RefreshCw className={`h-4 w-4 mr-2 ${(filesLoading || loading) ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
         </div>
       </div>
