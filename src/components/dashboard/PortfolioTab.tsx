@@ -367,7 +367,6 @@ export function PortfolioTab({
                               stockSymbol={holding.instrument}
                               stockName={holding.instrument}
                               isExpanded={expandedRows.has(holding.instrument)}
-                              onToggle={() => toggleRow(holding.instrument)}
                             />
                           </td>
                         </tr>

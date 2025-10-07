@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, BarChart3, Activity, DollarSign, Calendar, Users, Package, Info } from "lucide-react"
+import { TrendingUp, TrendingDown, BarChart3, Activity, DollarSign, Calendar, Users, Package, Info } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,14 +13,12 @@ interface StockBhavcopyDropdownProps {
   stockSymbol: string
   stockName: string
   isExpanded: boolean
-  onToggle: () => void
 }
 
 export function StockBhavcopyDropdown({
   stockSymbol,
   stockName,
-  isExpanded,
-  onToggle
+  isExpanded
 }: StockBhavcopyDropdownProps) {
   const [bhavcopyData, setBhavcopyData] = useState<BhavcopyRecord | null>(null)
   const [loading, setLoading] = useState(false)
@@ -101,32 +99,12 @@ export function StockBhavcopyDropdown({
     return null
   }
 
+  if (!isExpanded) return null
+
   return (
     <div className="border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-      {/* Toggle Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onToggle}
-        className="w-full justify-between text-sm text-gray-700 hover:text-gray-900 hover:bg-blue-50 rounded-none border-b border-gray-100 transition-all duration-200"
-      >
-        <span className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-blue-600" />
-          <span className="font-medium">Market Data for {stockName}</span>
-          <Badge variant="outline" className="text-xs ml-2">
-            Bhavcopy
-          </Badge>
-        </span>
-        {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-blue-600" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-gray-400" />
-        )}
-      </Button>
-
       {/* Expanded Content */}
-      {isExpanded && (
-        <div className="p-6 space-y-6 bg-white">
+      <div className="p-6 space-y-6 bg-white">
           {loading && (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mx-auto"></div>
@@ -299,8 +277,7 @@ export function StockBhavcopyDropdown({
               </div>
             </>
           )}
-        </div>
-      )}
+      </div>
     </div>
   )
 }
