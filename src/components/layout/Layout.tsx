@@ -58,7 +58,7 @@ export function Layout({ children, title, onRefresh, isLoading = false }: Layout
       />
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className={`transition-all duration-150 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
-        <main className="px-4 md:px-6 pb-12 pt-24 bg-white min-h-[calc(100vh-5rem)]">
+        <main className="px-3 sm:px-4 md:px-6 pb-12 pt-24 bg-white min-h-[calc(100vh-5rem)]">
           {children}
         </main>
       </div>

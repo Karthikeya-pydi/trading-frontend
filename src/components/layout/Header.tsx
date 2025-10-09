@@ -120,14 +120,14 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
       {/* Header content with exact spacing and animations */}
       <div className="relative flex items-center justify-between h-full px-4 md:px-6">
         {/* Logo section with motion animations */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <div className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">IIFL Trading</span>
+            <span className="text-lg sm:text-xl font-bold text-gray-900 hidden xs:inline">IIFL Trading</span>
           </div>
-          <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+          <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 text-xs hidden sm:inline-flex">
             Connected
           </Badge>
         </div>
@@ -149,32 +149,43 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
         </div>
 
         {/* Mobile Search Bar */}
-        <div className="md:hidden flex-1 mx-4">
+        <div className="md:hidden flex-1 mx-2 sm:mx-4">
           <form onSubmit={handleSearch}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Search stocks..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 text-sm"
+                className="pl-8 sm:pl-10 pr-2 sm:pr-4 py-1.5 sm:py-2 w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 text-sm"
               />
             </div>
           </form>
         </div>
 
         {/* Right side actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           <Button
             onClick={onRefresh}
             disabled={isLoading}
             variant="outline"
             size="sm"
-            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200"
+            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 hidden sm:flex"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
+            <RefreshCw className={`h-4 w-4 sm:mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+
+          {/* Mobile refresh button */}
+          <Button
+            onClick={onRefresh}
+            disabled={isLoading}
+            variant="outline"
+            size="sm"
+            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 sm:hidden p-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
           
           {/* Account dropdown */}
@@ -182,16 +193,16 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
             <Button 
               variant="outline" 
               size="sm" 
-              className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200"
+              className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 sm:px-4 px-2"
               onClick={() => setShowAccountDropdown(!showAccountDropdown)}
             >
-              <User className="h-4 w-4 mr-2" />
-              Account
-              <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showAccountDropdown ? 'rotate-180' : ''}`} />
+              <User className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Account</span>
+              <ChevronDown className={`h-4 w-4 sm:ml-1 ml-0 transition-transform ${showAccountDropdown ? 'rotate-180' : ''}`} />
             </Button>
             
             {showAccountDropdown && (
-              <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="absolute right-0 top-full mt-1 w-64 sm:w-64 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                 {/* Balance Display Section */}
                 {balanceData && (
                   <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">

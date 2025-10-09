@@ -76,9 +76,9 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
           onClick={toggleSidebar}
           variant="ghost"
           size="sm"
-          className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-r-lg shadow-sm transition-all duration-200 hover:shadow-md"
+          className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-r-lg shadow-sm transition-all duration-200 hover:shadow-md px-2 sm:px-3"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       </div>
 
@@ -99,7 +99,7 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5">
+        <nav className="flex-1 px-3 sm:px-4 py-4 sm:py-6 space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -108,7 +108,13 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex items-center justify-between rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                onClick={() => {
+                  // Close sidebar on mobile after navigation
+                  if (window.innerWidth < 1024) {
+                    toggleSidebar()
+                  }
+                }}
+                className={`group flex items-center justify-between rounded-lg px-3 sm:px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? "bg-gradient-to-r from-teal-600/90 to-teal-500/90 text-white shadow-md"
                     : "text-gray-700 hover:bg-teal-50 hover:text-teal-600"
@@ -118,7 +124,7 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                   <Icon className={`h-4 w-4 ${
                     isActive ? "text-white" : "text-gray-500 group-hover:text-teal-600"
                   }`} />
-                  <span>{item.title}</span>
+                  <span className="text-sm sm:text-base">{item.title}</span>
                 </div>
               </Link>
             )
@@ -126,7 +132,7 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-3 sm:p-4 border-t border-gray-200">
           <div className="text-xs text-gray-500 text-center">
             <p className="mt-1">v1.0.0</p>
           </div>

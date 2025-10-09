@@ -18,8 +18,8 @@ export default function AnalysisPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Market Analysis</h1>
-            <p className="text-gray-600 mt-2">Comprehensive analysis of stock returns and market data</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Market Analysis</h1>
+            <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Comprehensive analysis of stock returns and market data</p>
           </div>
         </div>
 
@@ -38,18 +38,21 @@ export default function AnalysisPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="returns" className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Stock Returns</span>
+              <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
+                <TabsTrigger value="returns" className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Stock Returns</span>
+                  <span className="sm:hidden">Returns</span>
                 </TabsTrigger>
-                <TabsTrigger value="stock-analysis" className="flex items-center space-x-2">
-                  <Search className="h-4 w-4" />
-                  <span>Stock Analysis</span>
+                <TabsTrigger value="stock-analysis" className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4">
+                  <Search className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Stock Analysis</span>
+                  <span className="sm:hidden">Analysis</span>
                 </TabsTrigger>
-                <TabsTrigger value="bhavcopy" className="flex items-center space-x-2">
-                  <Activity className="h-4 w-4" />
-                  <span>Bhavcopy Data</span>
+                <TabsTrigger value="bhavcopy" className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4">
+                  <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Bhavcopy Data</span>
+                  <span className="sm:hidden">Bhavcopy</span>
                 </TabsTrigger>
               </TabsList>
 

@@ -19,20 +19,20 @@ export default function TradingPage() {
     <Layout title="Trading">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Trading</h1>
-            <p className="text-gray-600 mt-2">Buy and sell stocks with real-time market data</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Trading</h1>
+            <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Buy and sell stocks with real-time market data</p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             {/* Exchange Status */}
             <ExchangeStatus />
             
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="text-green-600 border-green-200">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-green-600 border-green-200 text-xs sm:text-sm">
                 Live Market
               </Badge>
-              <Badge variant="outline" className="text-blue-600 border-blue-200">
+              <Badge variant="outline" className="text-blue-600 border-blue-200 text-xs sm:text-sm">
                 IIFL Connected
               </Badge>
             </div>
@@ -55,14 +55,14 @@ export default function TradingPage() {
         {/* Selected Stock Info */}
         {selectedStock && (
           <Card className="border-green-200 bg-green-50 mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>{selectedStock.symbol} - {selectedStock.name}</span>
-                <Badge variant="secondary" className="text-sm">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span className="text-base sm:text-lg">{selectedStock.symbol} - {selectedStock.name}</span>
+                <Badge variant="secondary" className="text-sm w-fit">
                   ₹{selectedStock.current_price?.toFixed(2) || 'N/A'}
                 </Badge>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 {selectedStock.exchange_segment === 1 ? 'NSE' : 'BSE'} • 
                 ISIN: {selectedStock.isin} • 
                 Lot Size: {selectedStock.lot_size}
@@ -73,10 +73,10 @@ export default function TradingPage() {
 
         {/* Main Trading Interface */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="trade">Trade</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="trades">Trade History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
+            <TabsTrigger value="trade" className="px-2 sm:px-4">Trade</TabsTrigger>
+            <TabsTrigger value="orders" className="px-2 sm:px-4">Orders</TabsTrigger>
+            <TabsTrigger value="trades" className="px-2 sm:px-4">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="trade" className="space-y-4">

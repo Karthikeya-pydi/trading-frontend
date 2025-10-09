@@ -51,28 +51,28 @@ export default function LoginPage() {
 
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-3 sm:px-4">
       <div className="w-full max-w-md">
         {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
-              <TrendingUp className="h-7 w-7 text-white" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex items-center justify-center space-x-2 mb-3 sm:mb-4">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
+              <TrendingUp className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">IIFL Trading</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900">IIFL Trading</span>
           </div>
-          <p className="text-gray-600">Sign in to your trading account</p>
+          <p className="text-gray-600 text-sm sm:text-base">Sign in to your trading account</p>
         </div>
 
         {/* Login Card */}
         <Card className="bg-white shadow-lg border-0">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center text-gray-900">Welcome back</CardTitle>
-            <CardDescription className="text-center text-gray-600">
+          <CardHeader className="space-y-1 p-4 sm:p-6">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-center text-gray-900">Welcome back</CardTitle>
+            <CardDescription className="text-center text-gray-600 text-sm sm:text-base">
               Sign in with your Google account to access your trading dashboard
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -116,8 +116,8 @@ export default function LoginPage() {
 
 
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="mt-4 sm:mt-6 text-center">
+              <p className="text-xs sm:text-sm text-gray-600 px-2">
                 By continuing, you agree to our{" "}
                 <button
                   type="button"

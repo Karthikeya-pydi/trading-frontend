@@ -210,8 +210,8 @@ export default function ScreenerPage() {
     if (!data || !data.headers || !data.rows) return null
     
     return (
-      <div className="space-y-3">
-        <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+      <div className="space-y-2 sm:space-y-3">
+        <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
           {title === "Quarters Data" && <Calendar className="h-4 w-4" />}
           {title === "Ratios Data" && <BarChart className="h-4 w-4" />}
           {title === "Valuation Data" && <DollarSign className="h-4 w-4" />}
@@ -225,12 +225,12 @@ export default function ScreenerPage() {
           {title === "Peers Data" && <Building className="h-4 w-4" />}
           {title}
         </h4>
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="overflow-x-auto border rounded-lg -mx-3 sm:mx-0">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 {data.headers.map((header: string, index: number) => (
-                  <th key={index} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={index} className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {header}
                   </th>
                 ))}
@@ -240,7 +240,7 @@ export default function ScreenerPage() {
               {data.rows.map((row: string[], rowIndex: number) => (
                 <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   {row.map((cell: string, cellIndex: number) => (
-                    <td key={cellIndex} className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                    <td key={cellIndex} className="px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-900 whitespace-nowrap">
                       {cell}
                     </td>
                   ))}
@@ -261,8 +261,8 @@ export default function ScreenerPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Stock Screener</h1>
-            <p className="text-gray-600 mt-2">Comprehensive stock screening and financial analysis tools</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Stock Screener</h1>
+            <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Comprehensive stock screening and financial analysis tools</p>
           </div>
         </div>
 
@@ -278,19 +278,20 @@ export default function ScreenerPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className="flex-1">
                 <Input
                   placeholder="Enter stock symbol or name (e.g., RELIANCE, TCS, INFY)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                  className="text-sm sm:text-base"
                 />
               </div>
               <Button 
                 onClick={handleSearch} 
                 disabled={isSearching || !searchQuery.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               >
                 {isSearching ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -392,7 +393,7 @@ export default function ScreenerPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-6">
               <div className="flex-1">
                 <Label htmlFor="filter-search" className="sr-only">Filter stocks</Label>
                 <Input
@@ -400,13 +401,14 @@ export default function ScreenerPage() {
                   placeholder="Filter by symbol or name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  className="text-sm sm:text-base"
                 />
               </div>
               <div className="flex space-x-2">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-auto"
                 >
                   <option value="all">All Status</option>
                   <option value="success">Success</option>
@@ -427,103 +429,175 @@ export default function ScreenerPage() {
               ) : filteredStocks.length === 0 ? (
                 <div className="p-8 text-center">
                   <Building2 className="h-8 w-8 mx-auto text-gray-400" />
-                  <p className="text-gray-500 mt-2">
+                  <p className="text-gray-500 mt-2 text-sm sm:text-base">
                     {stocks.length === 0 ? "No stocks found in database" : "No stocks match your filters"}
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Stock
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Updated
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredStocks.map((stock) => (
-                        <tr key={stock.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {stock.stock_symbol}
+                <>
+                  {/* Desktop Table View */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Stock
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Last Updated
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredStocks.map((stock) => (
+                          <tr key={stock.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {stock.stock_symbol}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {stock.stock_name}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {stock.stock_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-2">
+                                {getStatusIcon(stock.scraping_status)}
+                                {getStatusBadge(stock.scraping_status)}
                               </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {stock.last_scraped_at 
+                                ? new Date(stock.last_scraped_at).toLocaleString()
+                                : "Never"
+                              }
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <Button
+                                  onClick={() => handleViewStock(stock)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View
+                                </Button>
+                                <Button
+                                  onClick={() => handleRefreshStock(stock)}
+                                  disabled={refreshingStocks.has(stock.stock_symbol)}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  {refreshingStocks.has(stock.stock_symbol) ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                  <span className="ml-2">
+                                    {refreshingStocks.has(stock.stock_symbol) ? "Refreshing..." : "Refresh"}
+                                  </span>
+                                </Button>
+                                <Button
+                                  onClick={() => handleDeleteStock(stock)}
+                                  disabled={deletingStocks.has(stock.stock_symbol)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 border-red-300 hover:bg-red-50"
+                                >
+                                  {deletingStocks.has(stock.stock_symbol) ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                  <span className="ml-2">
+                                    {deletingStocks.has(stock.stock_symbol) ? "Deleting..." : "Delete"}
+                                  </span>
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="lg:hidden space-y-3">
+                    {filteredStocks.map((stock) => (
+                      <div key={stock.id} className="border rounded-lg p-4 bg-white hover:bg-gray-50">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{stock.stock_symbol}</div>
+                              <div className="text-sm text-gray-500 mt-1">{stock.stock_name}</div>
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center space-x-2">
                               {getStatusIcon(stock.scraping_status)}
                               {getStatusBadge(stock.scraping_status)}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {stock.last_scraped_at 
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Last updated: {stock.last_scraped_at 
                               ? new Date(stock.last_scraped_at).toLocaleString()
                               : "Never"
                             }
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              <Button
-                                onClick={() => handleViewStock(stock)}
-                                variant="outline"
-                                size="sm"
-                                className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View
-                              </Button>
-                              <Button
-                                onClick={() => handleRefreshStock(stock)}
-                                disabled={refreshingStocks.has(stock.stock_symbol)}
-                                variant="outline"
-                                size="sm"
-                              >
-                                {refreshingStocks.has(stock.stock_symbol) ? (
-                                  <RefreshCw className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Download className="h-4 w-4" />
-                                )}
-                                <span className="ml-2">
-                                  {refreshingStocks.has(stock.stock_symbol) ? "Refreshing..." : "Refresh"}
-                                </span>
-                              </Button>
-                              <Button
-                                onClick={() => handleDeleteStock(stock)}
-                                disabled={deletingStocks.has(stock.stock_symbol)}
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-300 hover:bg-red-50"
-                              >
-                                {deletingStocks.has(stock.stock_symbol) ? (
-                                  <RefreshCw className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                                <span className="ml-2">
-                                  {deletingStocks.has(stock.stock_symbol) ? "Deleting..." : "Delete"}
-                                </span>
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              onClick={() => handleViewStock(stock)}
+                              variant="outline"
+                              size="sm"
+                              className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 flex-1 min-w-[80px]"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              onClick={() => handleRefreshStock(stock)}
+                              disabled={refreshingStocks.has(stock.stock_symbol)}
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 min-w-[80px]"
+                            >
+                              {refreshingStocks.has(stock.stock_symbol) ? (
+                                <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-1" />
+                              )}
+                              <span className="text-xs">
+                                {refreshingStocks.has(stock.stock_symbol) ? "Refreshing..." : "Refresh"}
+                              </span>
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteStock(stock)}
+                              disabled={deletingStocks.has(stock.stock_symbol)}
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-300 hover:bg-red-50 flex-1 min-w-[80px]"
+                            >
+                              {deletingStocks.has(stock.stock_symbol) ? (
+                                <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 mr-1" />
+                              )}
+                              <span className="text-xs">
+                                {deletingStocks.has(stock.stock_symbol) ? "Deleting..." : "Delete"}
+                              </span>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </CardContent>
@@ -533,8 +607,8 @@ export default function ScreenerPage() {
         {totalPages > 1 && (
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs sm:text-sm text-gray-700">
                   Showing {((currentPage - 1) * itemsPerPage) + 1} to{" "}
                   {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} results
                 </div>
@@ -546,7 +620,8 @@ export default function ScreenerPage() {
                     size="sm"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    <span className="ml-2">Previous</span>
+                    <span className="ml-1 sm:ml-2 hidden sm:inline">Previous</span>
+                    <span className="ml-1 sm:ml-2 sm:hidden">Prev</span>
                   </Button>
                   <Button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
@@ -554,7 +629,7 @@ export default function ScreenerPage() {
                     variant="outline"
                     size="sm"
                   >
-                    <span className="mr-2">Next</span>
+                    <span className="mr-1 sm:mr-2">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -607,20 +682,20 @@ export default function ScreenerPage() {
 
         {/* Stock Details Modal */}
         {isViewModalOpen && selectedStock && (
-          <div className="fixed inset-0 backdrop-blur-md bg-white/30 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+          <div className="fixed inset-0 backdrop-blur-md bg-white/30 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="bg-white rounded-lg max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <Building2 className="h-6 w-6 text-indigo-600" />
-                    {selectedStock.stock_symbol}
+              <div className="flex items-start sm:items-center justify-between p-3 sm:p-6 border-b border-gray-200 gap-2">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+                    <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 flex-shrink-0" />
+                    <span className="truncate">{selectedStock.stock_symbol}</span>
                   </h2>
-                  <p className="text-gray-600 mt-1">{selectedStock.stock_name}</p>
-                  <div className="flex items-center gap-2 mt-2">
+                  <p className="text-gray-600 mt-1 text-sm sm:text-base truncate">{selectedStock.stock_name}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
                     {getStatusIcon(selectedStock.scraping_status)}
                     {getStatusBadge(selectedStock.scraping_status)}
-                    <span className="text-sm text-gray-500">
+                    <span className="text-xs sm:text-sm text-gray-500">
                       Last updated: {selectedStock.last_scraped_at 
                         ? new Date(selectedStock.last_scraped_at).toLocaleString()
                         : "Never"
@@ -632,28 +707,28 @@ export default function ScreenerPage() {
                   onClick={closeViewModal}
                   variant="outline"
                   size="sm"
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 flex-shrink-0"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </div>
 
               {/* Modal Content */}
-              <div className="p-6">
+              <div className="p-3 sm:p-6">
                 {isLoadingDetails ? (
                   <div className="text-center py-12">
                     <RefreshCw className="h-12 w-12 animate-spin mx-auto text-gray-400" />
                     <p className="text-gray-500 mt-4">Loading stock details...</p>
                   </div>
                 ) : stockDetails ? (
-                  <div className="space-y-8">
+                  <div className="space-y-6 sm:space-y-8">
                     {/* Overview Data */}
                     {stockDetails.overview_data && Object.keys(stockDetails.overview_data).length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         {Object.entries(stockDetails.overview_data).map(([key, value]) => (
-                          <div key={key} className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="font-medium text-gray-700 text-sm uppercase tracking-wide">{key}</h4>
-                            <p className="text-lg font-semibold text-gray-900 mt-1">{value as string}</p>
+                          <div key={key} className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                            <h4 className="font-medium text-gray-700 text-xs sm:text-sm uppercase tracking-wide">{key}</h4>
+                            <p className="text-base sm:text-lg font-semibold text-gray-900 mt-1 break-words">{value as string}</p>
                           </div>
                         ))}
                       </div>
