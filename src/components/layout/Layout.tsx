@@ -57,7 +57,7 @@ export function Layout({ children, title, onRefresh, isLoading = false }: Layout
         isLoading={isLoading}
       />
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      <div className={`transition-all duration-150 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
+      <div className={`transition-all duration-300 lg:ml-64`}>
         <main className="px-3 sm:px-4 md:px-6 pb-12 pt-24 bg-white min-h-[calc(100vh-5rem)]">
           {children}
         </main>

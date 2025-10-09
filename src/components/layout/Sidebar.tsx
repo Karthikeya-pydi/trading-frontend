@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,7 +11,6 @@ import {
   Clock,
   BarChart3,
   HelpCircle,
-  Menu,
   X,
   Search,
   Filter
@@ -34,28 +32,6 @@ const navItems = [
 
 export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const pathname = usePathname()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    const checkMobile = () => {
-      if (window.innerWidth < 1024) {
-        // On mobile, sidebar should be closed by default
-        if (isOpen) {
-          toggleSidebar()
-        }
-      }
-    }
-    
-    if (mounted) {
-      checkMobile()
-      window.addEventListener('resize', checkMobile)
-      return () => window.removeEventListener('resize', checkMobile)
-    }
-  }, [mounted, isOpen, toggleSidebar])
 
   return (
     <>
@@ -64,27 +40,12 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
           onClick={toggleSidebar}
-          style={{ top: '5rem' }}
         />
       )}
 
-      {/* Toggle Button - positioned at sidebar edge */}
-      <div className={`fixed top-20 z-50 transition-all duration-300 ease-in-out ${
-        isOpen ? 'left-64' : 'left-0'
-      }`}>
-        <Button
-          onClick={toggleSidebar}
-          variant="ghost"
-          size="sm"
-          className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-r-lg shadow-sm transition-all duration-200 hover:shadow-md px-2 sm:px-3"
-        >
-          <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-        </Button>
-      </div>
-
       {/* Sidebar */}
-      <aside className={`fixed top-20 left-0 z-40 h-[calc(100vh-5rem)] w-64 bg-white border-r border-gray-200 transform transition-transform duration-150 ease-in-out ${
-        isOpen ? 'translate-x-0' : '-translate-x-full'
+      <aside className={`fixed top-20 left-0 z-40 h-[calc(100vh-5rem)] w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         
         {/* Sidebar header - only show on mobile */}

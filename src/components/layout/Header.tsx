@@ -15,7 +15,8 @@ import {
   User,
   ChevronDown,
   Search,
-  Wallet
+  Wallet,
+  Menu
 } from "lucide-react"
 import { TradingService } from "@/services/trading.service"
 import { BalanceResponse } from "@/types"
@@ -121,6 +122,16 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
       <div className="relative flex items-center justify-between h-full px-4 md:px-6">
         {/* Logo section with motion animations */}
         <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Mobile menu button */}
+          <Button
+            onClick={toggleSidebar}
+            variant="ghost"
+            size="sm"
+            className="lg:hidden p-2 hover:bg-gray-100"
+          >
+            <Menu className="h-5 w-5 text-gray-700" />
+          </Button>
+          
           <div className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
               <TrendingUp className="h-5 w-5 text-white" />
