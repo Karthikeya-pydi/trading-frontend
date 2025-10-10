@@ -325,7 +325,7 @@ export class TradingService {
       }
 
       // Fetch all returns data
-      const response = await this.apiCall<any>(`${API_ENDPOINTS.RETURNS_ALL}?include_normalized_score=true`)
+      const response = await this.apiCall<any>(`${API_ENDPOINTS.RETURNS_ALL}`)
       console.log('✅ TradingService - Returns data response:', response)
       
       if (!response?.data || !Array.isArray(response.data)) {
@@ -333,12 +333,13 @@ export class TradingService {
         return {}
       }
 
-      // Create a map of symbol to normalized score
+      // Create a map of symbol to raw score
       const scoreMap: Record<string, number | null> = {}
       
       response.data.forEach((stock: any) => {
-        if (stock.symbol && stock.normalized_score !== null && stock.normalized_score !== undefined) {
-          scoreMap[stock.symbol.toUpperCase()] = stock.normalized_score
+        if (stock.symbol) {
+          // Use raw_score instead of normalized_score
+          scoreMap[stock.symbol.toUpperCase()] = stock.raw_score ?? null
         }
       })
 

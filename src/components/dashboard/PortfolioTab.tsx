@@ -83,7 +83,8 @@ export function PortfolioTab({
           unrealizedPnLPercent: holding.unrealized_pnl_percent || 0,
           purchaseDate: holding.purchase_date,
           isCollateral: holding.is_collateral || false,
-          nseInstrumentId: holding.nse_instrument_id
+          nseInstrumentId: holding.nse_instrument_id,
+          rawScore: holding.raw_score ?? null  // Add raw_score from backend
         }
         console.log('🔍 PortfolioTab - Processed holding from summary:', processed)
         return processed
@@ -107,7 +108,8 @@ export function PortfolioTab({
           unrealizedPnLPercent: 0,
           purchaseDate: null,
           isCollateral: false,
-          nseInstrumentId: null
+          nseInstrumentId: null,
+          rawScore: null  // No raw_score in fallback data
         }
         console.log('🔍 PortfolioTab - Processed holding from fallback:', processed)
         return processed
@@ -120,10 +122,16 @@ export function PortfolioTab({
 
   const processedHoldings = getHoldingsFromData()
 
-  // Helper function to get stock score (0-100 scale)
-  const getStockScore = (stockName: string): number | null => {
-    if (!stockName) return null
-    return stockScores[stockName.toUpperCase()] || null
+  // Helper function to get stock score - prioritize raw_score from holding, fallback to stockScores lookup
+  const getStockScore = (holding: any): number | null => {
+    // First, try to get raw_score directly from the holding object (most efficient)
+    if (holding.rawScore !== null && holding.rawScore !== undefined) {
+      return holding.rawScore
+    }
+    
+    // Fallback to stockScores lookup (from separate API call)
+    if (!holding.instrument) return null
+    return stockScores[holding.instrument.toUpperCase()] || null
   }
 
   // Get portfolio summary data with fallbacks
@@ -283,7 +291,11 @@ export function PortfolioTab({
                       <th className="text-left p-3 font-semibold text-lg">Invested Value</th>
                       <th className="text-left p-3 font-semibold text-lg">Current Value</th>
                       <th className="text-left p-3 font-semibold text-lg">P&L</th>
-                      <th className="text-left p-3 font-semibold text-lg">Score</th>
+                      <th className="text-left p-3 font-semibold text-lg">
+                        <div className="flex items-center space-x-1">
+                          <span>Score</span>
+                        </div>
+                      </th>
                       <th className="text-left p-3 font-semibold text-lg">Type</th>
                     </tr>
                   </thead>
@@ -330,9 +342,9 @@ export function PortfolioTab({
                           </td>
                           <td className="p-3">
                             {(() => {
-                              const score = getStockScore(holding.instrument)
-                              if (score === null) {
-                                return <span className="text-gray-400 text-sm">-</span>
+                              const score = getStockScore(holding)
+                              if (score === null || score === undefined) {
+                                return <span className="text-gray-400 text-sm">N/A</span>
                               }
                               return (
                                 <div className="flex items-center space-x-1">
@@ -341,7 +353,7 @@ export function PortfolioTab({
                                     score >= 50 ? 'text-orange-600' : 
                                     score >= 20 ? 'text-yellow-600' : 'text-red-600'
                                   }`}>
-                                    {score.toFixed(0)}
+                                    {score.toFixed(2)}
                                   </span>
                                   <div className={`w-2 h-2 rounded-full ${
                                     score >= 75 ? 'bg-green-500' : 

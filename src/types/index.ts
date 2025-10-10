@@ -209,6 +209,7 @@ export interface HoldingsSummary {
     current_value: number
     unrealized_pnl: number
     unrealized_pnl_percent: number
+    raw_score: number | null  
   }>
   
   // Legacy frontend fields (for backward compatibility)
