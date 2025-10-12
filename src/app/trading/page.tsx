@@ -73,10 +73,10 @@ export default function TradingPage() {
 
         {/* Main Trading Interface */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
-            <TabsTrigger value="trade" className="px-2 sm:px-4">Trade</TabsTrigger>
-            <TabsTrigger value="orders" className="px-2 sm:px-4">Orders</TabsTrigger>
-            <TabsTrigger value="trades" className="px-2 sm:px-4">History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="trade">Trade</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="trades">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="trade" className="space-y-4">

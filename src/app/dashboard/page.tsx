@@ -551,9 +551,9 @@ export default function DashboardPage() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl shadow-sm text-sm sm:text-base">
-          <TabsTrigger value="holdings" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-600 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-md px-2 sm:px-4">Holdings</TabsTrigger>
-          <TabsTrigger value="positions" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-600 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-md px-2 sm:px-4">Positions</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl shadow-sm">
+          <TabsTrigger value="holdings" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-600 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-md">Holdings</TabsTrigger>
+          <TabsTrigger value="positions" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-600 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-md">Positions</TabsTrigger>
         </TabsList>
 
         {/* Holdings Tab */}

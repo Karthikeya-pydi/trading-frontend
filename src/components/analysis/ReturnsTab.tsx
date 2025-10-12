@@ -668,11 +668,11 @@ export default function ReturnsTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Stock Returns Analysis</h2>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+        <div className="flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Stock Returns Analysis</h2>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex gap-2">
           <Button
             onClick={async () => {
               await fetchAvailableFiles()
@@ -683,6 +683,7 @@ export default function ReturnsTab() {
             variant="outline"
             size="sm"
             disabled={filesLoading || loading}
+            className="w-full sm:w-auto"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${(filesLoading || loading) ? 'animate-spin' : ''}`} />
             Refresh
@@ -703,19 +704,19 @@ export default function ReturnsTab() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-                         <div className="flex flex-col sm:flex-row gap-4">
-               <div className="flex-1">
-                 <Label htmlFor="nifty-index-select" className="mb-2 block">Select Nifty Index</Label>
-                 <Select value={selectedIndex} onValueChange={handleIndexChange}>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Label htmlFor="nifty-index-select" className="mb-2 block">Select Nifty Index</Label>
+                <Select value={selectedIndex} onValueChange={handleIndexChange}>
                   <SelectTrigger id="nifty-index-select" className="w-full">
                     <SelectValue placeholder="Choose a Nifty index..." />
                   </SelectTrigger>
                   <SelectContent>
-                                         {niftyIndices.map((index, idx) => (
-                       <SelectItem key={`index-${index.filename || index.index_name || idx}`} value={index.index_name}>
-                         {index.index_name}
-                       </SelectItem>
-                     ))}
+                    {niftyIndices.map((index, idx) => (
+                      <SelectItem key={`index-${index.filename || index.index_name || idx}`} value={index.index_name}>
+                        {index.index_name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -725,6 +726,7 @@ export default function ReturnsTab() {
                   variant="outline"
                   size="sm"
                   disabled={niftyLoading}
+                  className="w-full sm:w-auto"
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${niftyLoading ? "animate-spin" : ""}`} />
                   Refresh Indices
@@ -793,16 +795,17 @@ export default function ReturnsTab() {
 
                    {/* Nifty Indices Pagination */}
                    {niftyTotalPages > 1 && (
-                     <div className="flex items-center justify-between">
-                       <div className="text-sm text-gray-700">
+                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                       <div className="text-xs sm:text-sm text-gray-700">
                          Page {niftyCurrentPage} of {niftyTotalPages}
                        </div>
-                       <div className="flex items-center space-x-2">
+                       <div className="flex items-center space-x-1 sm:space-x-2">
                          <Button
                            variant="outline"
                            size="sm"
                            onClick={() => goToNiftyPage(1)}
                            disabled={niftyCurrentPage === 1}
+                           className="hidden sm:flex"
                          >
                            <ChevronsLeft className="h-4 w-4" />
                          </Button>
@@ -816,30 +819,35 @@ export default function ReturnsTab() {
                          </Button>
                          
                          <div className="flex items-center space-x-1">
-                           {Array.from({ length: Math.min(5, niftyTotalPages) }, (_, i) => {
-                             let pageNum
-                             if (niftyTotalPages <= 5) {
-                               pageNum = i + 1
-                             } else if (niftyCurrentPage <= 3) {
-                               pageNum = i + 1
-                             } else if (niftyCurrentPage >= niftyTotalPages - 2) {
-                               pageNum = niftyTotalPages - 4 + i
-                             } else {
-                               pageNum = niftyCurrentPage - 2 + i
-                             }
-                             
-                             return (
-                               <Button
-                                 key={`nifty-page-${pageNum}`}
-                                 variant={niftyCurrentPage === pageNum ? "default" : "outline"}
-                                 size="sm"
-                                 onClick={() => goToNiftyPage(pageNum)}
-                                 className="w-8 h-8 p-0"
-                               >
-                                 {pageNum}
-                               </Button>
-                             )
-                           })}
+                           <span className="text-sm px-2">
+                             {niftyCurrentPage} / {niftyTotalPages}
+                           </span>
+                           <div className="hidden sm:flex items-center space-x-1">
+                             {Array.from({ length: Math.min(5, niftyTotalPages) }, (_, i) => {
+                               let pageNum
+                               if (niftyTotalPages <= 5) {
+                                 pageNum = i + 1
+                               } else if (niftyCurrentPage <= 3) {
+                                 pageNum = i + 1
+                               } else if (niftyCurrentPage >= niftyTotalPages - 2) {
+                                 pageNum = niftyTotalPages - 4 + i
+                               } else {
+                                 pageNum = niftyCurrentPage - 2 + i
+                               }
+                               
+                               return (
+                                 <Button
+                                   key={`nifty-page-${pageNum}`}
+                                   variant={niftyCurrentPage === pageNum ? "default" : "outline"}
+                                   size="sm"
+                                   onClick={() => goToNiftyPage(pageNum)}
+                                   className="w-8 h-8 p-0"
+                                 >
+                                   {pageNum}
+                                 </Button>
+                               )
+                             })}
+                           </div>
                          </div>
                          
                          <Button
@@ -855,6 +863,7 @@ export default function ReturnsTab() {
                            size="sm"
                            onClick={() => goToNiftyPage(niftyTotalPages)}
                            disabled={niftyCurrentPage === niftyTotalPages}
+                           className="hidden sm:flex"
                          >
                            <ChevronsRight className="h-4 w-4" />
                          </Button>
@@ -921,32 +930,36 @@ export default function ReturnsTab() {
 
              {/* Search Form */}
              <form onSubmit={handleSearch} className="space-y-4">
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Search by symbol, fincode, or ISIN (e.g., RELIANCE, 500325, INE002A01018)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                disabled={loading}
-                className="flex-1"
-              />
-              <Button type="submit" disabled={loading}>
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
-              {searchQuery && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("")
-                    setCurrentPage(1)
-                  }}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  placeholder="Search by symbol, fincode, or ISIN (e.g., RELIANCE, 500325, INE002A01018)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   disabled={loading}
-                >
-                  Clear
-                </Button>
-              )}
-                           </div>
+                  className="flex-1"
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={loading} className="flex-1 sm:flex-none">
+                    <Search className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Search</span>
+                    <span className="sm:hidden">Search</span>
+                  </Button>
+                  {searchQuery && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setSearchQuery("")
+                        setCurrentPage(1)
+                      }}
+                      disabled={loading}
+                      className="flex-1 sm:flex-none"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
              </form>
            </div>
          </CardContent>
@@ -971,49 +984,51 @@ export default function ReturnsTab() {
       {returnsData && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Activity className="h-5 w-5 text-green-600" />
-                <span className="text-xl font-semibold">Stock Returns Data</span>
-                {selectedIndex && (
-                  <Badge variant="outline" className="ml-2 bg-teal-50 text-teal-700 border-teal-200">
-                    {selectedIndex}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center space-x-3">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center space-x-2">
-                  <Label htmlFor="file-select-inline" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                    File:
-                  </Label>
-                  <Select value={selectedFile} onValueChange={handleFileChange} disabled={filesLoading}>
-                    <SelectTrigger id="file-select-inline" className="w-48">
-                      <SelectValue placeholder={filesLoading ? "Loading..." : "Select file"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableFiles.map((file) => (
-                        <SelectItem key={file.filename} value={file.filename}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{file.filename}</span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(file.last_modified).toLocaleDateString()} • {file.size_mb} MB
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Activity className="h-5 w-5 text-green-600" />
+                  <span className="text-xl font-semibold">Stock Returns Data</span>
+                  {selectedIndex && (
+                    <Badge variant="outline" className="ml-2 bg-teal-50 text-teal-700 border-teal-200">
+                      {selectedIndex}
+                    </Badge>
+                  )}
                 </div>
-                <Button
-                  onClick={exportToCSV}
-                  variant="outline"
-                  size="sm"
-                  disabled={!filteredAndSortedData.length}
-                  className="flex items-center space-x-2"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Download CSV</span>
-                </Button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="file-select-inline" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                      File:
+                    </Label>
+                    <Select value={selectedFile} onValueChange={handleFileChange} disabled={filesLoading}>
+                      <SelectTrigger id="file-select-inline" className="w-full sm:w-48">
+                        <SelectValue placeholder={filesLoading ? "Loading..." : "Select file"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableFiles.map((file) => (
+                          <SelectItem key={file.filename} value={file.filename}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{file.filename}</span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(file.last_modified).toLocaleDateString()} • {file.size_mb} MB
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={exportToCSV}
+                    variant="outline"
+                    size="sm"
+                    disabled={!filteredAndSortedData.length}
+                    className="flex items-center justify-center space-x-2 w-full sm:w-auto"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download CSV</span>
+                  </Button>
+                </div>
               </div>
             </div>
             <CardDescription>
@@ -1255,16 +1270,17 @@ export default function ReturnsTab() {
 
              {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-gray-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                <div className="text-xs sm:text-sm text-gray-700">
                   Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} results
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => goToPage(1)}
                     disabled={currentPage === 1}
+                    className="hidden sm:flex"
                   >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
@@ -1278,30 +1294,35 @@ export default function ReturnsTab() {
                   </Button>
                   
                   <div className="flex items-center space-x-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum
-                      if (totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i
-                      } else {
-                        pageNum = currentPage - 2 + i
-                      }
-                      
-                                                   return (
-                               <Button
-                                 key={`page-${pageNum}`}
-                                 variant={currentPage === pageNum ? "default" : "outline"}
-                                 size="sm"
-                                 onClick={() => goToPage(pageNum)}
-                                 className="w-8 h-8 p-0"
-                               >
-                                 {pageNum}
-                               </Button>
-                             )
-                    })}
+                    <span className="text-sm px-2">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <div className="hidden sm:flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum
+                        if (totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i
+                        } else {
+                          pageNum = currentPage - 2 + i
+                        }
+                        
+                        return (
+                          <Button
+                            key={`page-${pageNum}`}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                    </div>
                   </div>
                   
                   <Button
@@ -1317,6 +1338,7 @@ export default function ReturnsTab() {
                     size="sm"
                     onClick={() => goToPage(totalPages)}
                     disabled={currentPage === totalPages}
+                    className="hidden sm:flex"
                   >
                     <ChevronsRight className="h-4 w-4" />
                   </Button>
@@ -1336,7 +1358,7 @@ export default function ReturnsTab() {
             <p className="text-gray-600 mb-4">
               Click the refresh button to fetch the latest stock returns data.
             </p>
-            <Button onClick={fetchReturnsData} disabled={loading}>
+            <Button onClick={() => fetchReturnsData()} disabled={loading}>
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (

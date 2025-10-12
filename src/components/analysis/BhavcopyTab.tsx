@@ -261,12 +261,12 @@ export default function BhavcopyTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Bhavcopy Data</h2>
-          <p className="text-gray-600 mt-1">Complete market data for all listed securities</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+        <div className="flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Bhavcopy Data</h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Complete market data for all listed securities</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex gap-2">
           <Button
             onClick={async () => {
               await fetchAvailableFiles()
@@ -277,6 +277,7 @@ export default function BhavcopyTab() {
             variant="outline"
             size="sm"
             disabled={filesLoading || loading}
+            className="w-full sm:w-auto"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${(filesLoading || loading) ? 'animate-spin' : ''}`} />
             Refresh
@@ -303,31 +304,37 @@ export default function BhavcopyTab() {
                 <Label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-2 block">
                   Search
                 </Label>
-                <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     id="search-input"
                     placeholder="Search by symbol or series (e.g., RELIANCE, EQ)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     disabled={loading}
+                    className="flex-1"
                   />
-                  <Button type="submit" disabled={loading}>
-                    <Search className="h-4 w-4 mr-2" />
-                    Search
-                  </Button>
-                  {searchQuery && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setSearchQuery("")
-                        setCurrentPage(1)
-                      }}
-                      disabled={loading}
-                    >
-                      Clear Filters
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={loading} className="flex-1 sm:flex-none">
+                      <Search className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">Search</span>
+                      <span className="sm:hidden">Search</span>
                     </Button>
-                  )}
+                    {searchQuery && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setSearchQuery("")
+                          setCurrentPage(1)
+                        }}
+                        disabled={loading}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <span className="hidden sm:inline">Clear Filters</span>
+                        <span className="sm:hidden">Clear</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -359,18 +366,18 @@ export default function BhavcopyTab() {
       {bhavcopyData && filteredAndSortedData.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Activity className="h-5 w-5 text-green-600" />
-                <span className="text-xl font-semibold">Market Data Table</span>
-              </div>
-              <div className="flex items-center space-x-3">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center space-x-2">
+                  <Activity className="h-5 w-5 text-green-600" />
+                  <span className="text-xl font-semibold">Market Data Table</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <Label htmlFor="file-select-inline" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                     File:
                   </Label>
                   <Select value={selectedFile} onValueChange={handleFileChange} disabled={filesLoading}>
-                    <SelectTrigger id="file-select-inline" className="w-48">
+                    <SelectTrigger id="file-select-inline" className="w-full sm:w-48">
                       <SelectValue placeholder={filesLoading ? "Loading..." : "Select file"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -629,19 +636,20 @@ export default function BhavcopyTab() {
 
             {/* Pagination */}
             {totalPages > 1 && filteredAndSortedData.length > 0 && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-gray-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                <div className="text-xs sm:text-sm text-gray-700">
                   {filteredAndSortedData.length > 0 
                     ? `Showing ${startIndex + 1} to ${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} results`
                     : 'No results found'
                   }
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => goToPage(1)}
                     disabled={currentPage === 1}
+                    className="hidden sm:flex"
                   >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
@@ -655,30 +663,35 @@ export default function BhavcopyTab() {
                   </Button>
                   
                   <div className="flex items-center space-x-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum
-                      if (totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i
-                      } else {
-                        pageNum = currentPage - 2 + i
-                      }
-                      
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => goToPage(pageNum)}
-                          className="w-8 h-8 p-0"
-                        >
-                          {pageNum}
-                        </Button>
-                      )
-                    })}
+                    <span className="text-sm px-2">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <div className="hidden sm:flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum
+                        if (totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i
+                        } else {
+                          pageNum = currentPage - 2 + i
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                    </div>
                   </div>
                   
                   <Button
@@ -694,6 +707,7 @@ export default function BhavcopyTab() {
                     size="sm"
                     onClick={() => goToPage(totalPages)}
                     disabled={currentPage === totalPages}
+                    className="hidden sm:flex"
                   >
                     <ChevronsRight className="h-4 w-4" />
                   </Button>

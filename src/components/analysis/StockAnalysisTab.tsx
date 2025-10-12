@@ -315,12 +315,13 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
 
           {/* Action Buttons */}
           {analysisData && (
-            <div className="flex space-x-2 pt-2 border-t">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={refreshAnalysis}
                 disabled={loading}
+                className="w-full sm:w-auto"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -329,6 +330,7 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
                 variant="outline"
                 size="sm"
                 onClick={exportData}
+                className="w-full sm:w-auto"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Export Excel
@@ -337,6 +339,7 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
                 variant="outline"
                 size="sm"
                 onClick={clearResults}
+                className="w-full sm:w-auto"
               >
                 Clear
               </Button>
@@ -390,21 +393,21 @@ export default function StockAnalysisTab({ className }: StockAnalysisTabProps) {
           {/* Analysis Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview" className="flex items-center space-x-2">
-                <BarChart3 className="h-4 w-4" />
+              <TabsTrigger value="overview" className="flex items-center justify-center gap-1 sm:gap-2">
+                <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                 <span>Overview</span>
               </TabsTrigger>
-              <TabsTrigger value="statistics" className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4" />
+              <TabsTrigger value="statistics" className="flex items-center justify-center gap-1 sm:gap-2">
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                 <span>Statistics</span>
               </TabsTrigger>
-              <TabsTrigger value="anomalies" className="flex items-center space-x-2">
-                <AlertTriangle className="h-4 w-4" />
+              <TabsTrigger value="anomalies" className="flex items-center justify-center gap-1 sm:gap-2">
+                <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                 <span>Anomalies</span>
               </TabsTrigger>
-              <TabsTrigger value="data" className="flex items-center space-x-2">
-                <Activity className="h-4 w-4" />
-                <span>Data Table</span>
+              <TabsTrigger value="data" className="flex items-center justify-center gap-1 sm:gap-2">
+                <Activity className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                <span>Data</span>
               </TabsTrigger>
             </TabsList>
 

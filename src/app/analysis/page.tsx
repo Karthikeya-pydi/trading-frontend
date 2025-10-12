@@ -38,19 +38,19 @@ export default function AnalysisPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
-                <TabsTrigger value="returns" className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4">
-                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="returns" className="flex items-center justify-center gap-1 sm:gap-2">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                   <span className="hidden sm:inline">Stock Returns</span>
                   <span className="sm:hidden">Returns</span>
                 </TabsTrigger>
-                <TabsTrigger value="stock-analysis" className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4">
-                  <Search className="h-3 w-3 sm:h-4 sm:w-4" />
+                <TabsTrigger value="stock-analysis" className="flex items-center justify-center gap-1 sm:gap-2">
+                  <Search className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                   <span className="hidden sm:inline">Stock Analysis</span>
                   <span className="sm:hidden">Analysis</span>
                 </TabsTrigger>
-                <TabsTrigger value="bhavcopy" className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4">
-                  <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+                <TabsTrigger value="bhavcopy" className="flex items-center justify-center gap-1 sm:gap-2">
+                  <Activity className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                   <span className="hidden sm:inline">Bhavcopy Data</span>
                   <span className="sm:hidden">Bhavcopy</span>
                 </TabsTrigger>

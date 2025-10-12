@@ -250,30 +250,30 @@ export default function StockDataTab() {
                 </div>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-6 mb-6">
-                    <TabsTrigger value="overview" className="flex items-center space-x-2">
-                      <Building2 className="h-4 w-4" />
-                      <span>Overview</span>
+                  <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-6">
+                    <TabsTrigger value="overview" className="flex items-center justify-center gap-1">
+                      <Building2 className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="text-xs">Overview</span>
                     </TabsTrigger>
-                    <TabsTrigger value="financials" className="flex items-center space-x-2">
-                      <Calculator className="h-4 w-4" />
-                      <span>Financials</span>
+                    <TabsTrigger value="financials" className="flex items-center justify-center gap-1">
+                      <Calculator className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="text-xs">Financials</span>
                     </TabsTrigger>
-                    <TabsTrigger value="ratios" className="flex items-center space-x-2">
-                      <BarChart3 className="h-4 w-4" />
-                      <span>Ratios</span>
+                    <TabsTrigger value="ratios" className="flex items-center justify-center gap-1">
+                      <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="text-xs">Ratios</span>
                     </TabsTrigger>
-                    <TabsTrigger value="quarters" className="flex items-center space-x-2">
-                      <TrendingUp className="h-4 w-4" />
-                      <span>Quarters</span>
+                    <TabsTrigger value="quarters" className="flex items-center justify-center gap-1">
+                      <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="text-xs">Quarters</span>
                     </TabsTrigger>
-                    <TabsTrigger value="peers" className="flex items-center space-x-2">
-                      <Users className="h-4 w-4" />
-                      <span>Peers</span>
+                    <TabsTrigger value="peers" className="flex items-center justify-center gap-1">
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="text-xs">Peers</span>
                     </TabsTrigger>
-                    <TabsTrigger value="technical" className="flex items-center space-x-2">
-                      <LineChart className="h-4 w-4" />
-                      <span>Technical</span>
+                    <TabsTrigger value="technical" className="flex items-center justify-center gap-1">
+                      <LineChart className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="text-xs">Technical</span>
                     </TabsTrigger>
                   </TabsList>
 
