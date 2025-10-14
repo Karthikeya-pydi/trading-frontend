@@ -114,7 +114,7 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
   }
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-40 w-full transition-all duration-150 ${scrolled ? 'h-16' : 'h-20'}`}>
+    <header className="fixed top-0 left-0 right-0 z-40 w-full h-20 transition-all duration-150">
       {/* Backdrop blur and gradient overlay */}
       <div className={`absolute inset-0 bg-white backdrop-blur-md border-b border-gray-200 transition-all duration-150 ${scrolled ? 'shadow-md' : 'shadow-sm'}`}></div>
       
