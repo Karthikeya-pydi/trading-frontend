@@ -23,12 +23,7 @@ import {
   ChevronsRight,
   Award,
   Building2,
-  Download,
-  Filter,
-  Eye,
-  GitCompare,
-  Sparkles,
-  Star
+  Download
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 import { MarketDataService } from "@/services/market-data.service"
@@ -45,22 +40,6 @@ import {
   ReturnsFile,
   ReturnsRecord
 } from "@/types"
-import { 
-  FILTER_PRESETS,
-  calculateCompositeScore,
-  calculateRiskMetrics,
-  analyzePattern,
-  exportToEnhancedCSV,
-  advancedFilter,
-  prepareComparison,
-  DEFAULT_COLUMNS,
-  ColumnConfig
-} from "@/lib/returns-utils"
-import { Sparkline, TrendArrow, RatingStars, ColorGradientBar, RiskBadge } from "./Sparkline"
-import { StockComparison } from "./StockComparison"
-import { ColumnCustomizer } from "./ColumnCustomizer"
-import { AdvancedFilters, AdvancedFilterOptions } from "./AdvancedFilters"
-import { ReturnsCharts } from "./ReturnsCharts"
 
 // Use the new ReturnsRecord type from types/index.ts
 type StockReturns = ReturnsRecord
@@ -126,17 +105,6 @@ export default function ReturnsTab() {
   // Nifty indices pagination
   const [niftyCurrentPage, setNiftyCurrentPage] = useState(1)
   const [niftyItemsPerPage] = useState(20)
-
-  // NEW: Enhanced features state
-  const [selectedPreset, setSelectedPreset] = useState<string>("all")
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-  const [advancedFilterOptions, setAdvancedFilterOptions] = useState<AdvancedFilterOptions>({})
-  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false)
-  const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS)
-  const [showComparison, setShowComparison] = useState(false)
-  const [comparisonStocks, setComparisonStocks] = useState<string[]>([])
-  const [showCharts, setShowCharts] = useState(false)
-  const [enableAdvancedMetrics, setEnableAdvancedMetrics] = useState(true)
 
   // Available time periods
   const timePeriods = [
@@ -352,17 +320,6 @@ export default function ReturnsTab() {
 
     let filtered = returnsData.data
 
-    // NEW: Apply preset filter first
-    const preset = FILTER_PRESETS.find(p => p.id === selectedPreset)
-    if (preset && preset.id !== 'all') {
-      filtered = filtered.filter(preset.filterFn)
-    }
-
-    // NEW: Apply advanced filters
-    if (Object.keys(advancedFilterOptions).length > 0) {
-      filtered = advancedFilter(filtered, advancedFilterOptions)
-    }
-
     // Apply Nifty index filter
     if (selectedIndex && niftyIndexData?.data) {
       const indexSymbols = niftyIndexData.data.map(row => {
@@ -435,7 +392,7 @@ export default function ReturnsTab() {
     })
 
     return filtered
-  }, [returnsData, selectedIndex, niftyIndexData, searchQuery, sortField, sortDirection, selectedPreset, advancedFilterOptions])
+  }, [returnsData, selectedIndex, niftyIndexData, searchQuery, sortField, sortDirection])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
@@ -585,16 +542,93 @@ export default function ReturnsTab() {
     return 'text-gray-600'
   }
 
-  // Enhanced CSV export function
+  // CSV export function
   const exportToCSV = () => {
     if (!filteredAndSortedData.length) return
 
-    // Use enhanced export function with advanced metrics
-    const csvContent = exportToEnhancedCSV(
-      filteredAndSortedData,
-      returnsData?.data || [],
-      enableAdvancedMetrics
-    )
+    // Define CSV headers
+    const headers = [
+      'Symbol',
+      'Fincode',
+      'ISIN',
+      'Latest Date',
+      'Latest Close',
+      'Latest Volume',
+      'Turnover',
+      'Raw Score',
+      '1 Week Return',
+      '1 Month Return',
+      '3 Months Return',
+      '6 Months Return',
+      '9 Months Return',
+      '1 Year Return',
+      '3 Years Return',
+      '5 Years Return',
+      '1W Score %',
+      '1M Score %',
+      '3M Score %',
+      '6M Score %',
+      '9M Score %',
+      '1Y Score %',
+      '1W Sign Pattern',
+      '1M Sign Pattern',
+      '3M Sign Pattern',
+      '6M Sign Pattern',
+      '9M Sign Pattern',
+      '1Y Sign Pattern',
+      '1W Ago Score',
+      '1M Ago Score',
+      '3M Ago Score',
+      '6M Ago Score',
+      '9M Ago Score',
+      '1Y Ago Score'
+    ]
+
+    // Convert data to CSV format
+    const csvData = filteredAndSortedData.map(record => [
+      record.symbol,
+      record.fincode,
+      record.isin,
+      record.latest_date,
+      record.latest_close,
+      record.latest_volume,
+      record.turnover || '',
+      record.raw_score || '',
+      record.returns_1_week || '',
+      record.returns_1_month || '',
+      record.returns_3_months || '',
+      record.returns_6_months || '',
+      record.returns_9_months || '',
+      record.returns_1_year || '',
+      record.returns_3_years || '',
+      record.returns_5_years || '',
+      record.score_change_1_week || '',
+      record.score_change_1_month || '',
+      record.score_change_3_months || '',
+      record.score_change_6_months || '',
+      record.score_change_9_months || '',
+      record.score_change_1_year || '',
+      record.sign_pattern_1_week || '',
+      record.sign_pattern_1_month || '',
+      record.sign_pattern_3_months || '',
+      record.sign_pattern_6_months || '',
+      record.sign_pattern_9_months || '',
+      record.sign_pattern_1_year || '',
+      record.raw_score_1_week_ago || '',
+      record.raw_score_1_month_ago || '',
+      record.raw_score_3_months_ago || '',
+      record.raw_score_6_months_ago || '',
+      record.raw_score_9_months_ago || '',
+      record.raw_score_1_year_ago || ''
+    ])
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(field => 
+        typeof field === 'string' && field.includes(',') ? `"${field}"` : field
+      ).join(','))
+    ].join('\n')
 
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -604,80 +638,15 @@ export default function ReturnsTab() {
     
     // Generate filename with timestamp and filter info
     const timestamp = new Date().toISOString().split('T')[0]
-    const presetSuffix = selectedPreset !== 'all' ? `_${selectedPreset}` : ''
-    const indexSuffix = selectedIndex ? `_${selectedIndex.replace(/[^a-zA-Z0-9]/g, '_')}` : ''
-    const filename = `stock_returns${presetSuffix}${indexSuffix}_${timestamp}.csv`
+    const filterSuffix = selectedIndex ? `_${selectedIndex.replace(/[^a-zA-Z0-9]/g, '_')}` : ''
+    const filename = `stock_returns${filterSuffix}_${timestamp}.csv`
     
     link.setAttribute('download', filename)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
-    setSuccess(`Exported ${filteredAndSortedData.length} stocks to CSV with ${enableAdvancedMetrics ? 'advanced' : 'basic'} metrics`)
   }
-
-  // NEW: Handler functions for enhanced features
-  const toggleStockForComparison = (symbol: string) => {
-    setComparisonStocks(prev => {
-      if (prev.includes(symbol)) {
-        return prev.filter(s => s !== symbol)
-      } else if (prev.length < 5) {
-        return [...prev, symbol]
-      } else {
-        setError('Maximum 5 stocks can be compared at once')
-        return prev
-      }
-    })
-  }
-
-  const handleComparisonView = () => {
-    if (comparisonStocks.length < 2) {
-      setError('Select at least 2 stocks to compare')
-      return
-    }
-    setShowComparison(true)
-  }
-
-  const handleRemoveFromComparison = (symbol: string) => {
-    setComparisonStocks(prev => prev.filter(s => s !== symbol))
-  }
-
-  const handlePresetChange = (presetId: string) => {
-    setSelectedPreset(presetId)
-    setCurrentPage(1)
-    const preset = FILTER_PRESETS.find(p => p.id === presetId)
-    if (preset) {
-      setSuccess(`Applied filter: ${preset.name}`)
-    }
-  }
-
-  const handleAdvancedFiltersUpdate = (filters: AdvancedFilterOptions) => {
-    setAdvancedFilterOptions(filters)
-    setCurrentPage(1)
-    const filterCount = Object.keys(filters).filter(k => filters[k as keyof AdvancedFilterOptions] !== undefined).length
-    if (filterCount > 0) {
-      setSuccess(`Applied ${filterCount} advanced filters`)
-    }
-  }
-
-  const handleColumnsUpdate = (updatedColumns: ColumnConfig[]) => {
-    setColumns(updatedColumns)
-    localStorage.setItem('returns-columns', JSON.stringify(updatedColumns))
-    setSuccess('Column preferences saved')
-  }
-
-  // Load column preferences on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('returns-columns')
-    if (saved) {
-      try {
-        setColumns(JSON.parse(saved))
-      } catch (e) {
-        console.error('Failed to load column preferences:', e)
-      }
-    }
-  }, [])
 
   // Handle index selection change
   const handleIndexChange = (indexName: string) => {
@@ -721,15 +690,6 @@ export default function ReturnsTab() {
           </Button>
         </div>
       </div>
-
-
-      {/* NEW: Charts Section */}
-      {showCharts && returnsData?.data && (
-        <ReturnsCharts 
-          data={filteredAndSortedData} 
-          selectedPeriod="1_year"
-        />
-      )}
 
       {/* Nifty Indices Section */}
       <Card>
@@ -917,81 +877,59 @@ export default function ReturnsTab() {
         </CardContent>
       </Card>
 
-      {/* Enhanced Search & Filter Section */}
+      {/* Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Search className="h-5 w-5 text-teal-600" />
             <span>Search & Filter</span>
           </CardTitle>
-          <CardDescription>
-            Search stocks, apply quick filters, or create custom criteria
-          </CardDescription>
+                     <CardDescription>
+             Search by symbol, fincode, or ISIN, and filter by Nifty indices
+           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Quick Filter Presets */}
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="h-4 w-4 text-teal-600" />
-                <span className="text-sm font-medium text-gray-700">Quick Filters</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                {FILTER_PRESETS.map(preset => (
-                  <Button
-                    key={preset.id}
-                    variant={selectedPreset === preset.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePresetChange(preset.id)}
-                    className="text-xs"
-                    title={preset.description}
-                  >
-                    {preset.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
+                 <CardContent>
+           <div className="space-y-4">
+             {/* Filter Summary */}
+             {selectedIndex && (
+                                <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                       <Building2 className="h-4 w-4 text-teal-600" />
+                       <span className="text-sm font-medium text-teal-900">
+                         Filtered by: <span className="font-semibold">{selectedIndex}</span>
+                       </span>
+                       <Badge variant="secondary" className="bg-teal-100 text-teal-800">
+                         {filteredAndSortedData.length} stocks
+                       </Badge>
+                     </div>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => {
+                         setSelectedIndex("")
+                         setNiftyIndexData(null)
+                         setCurrentPage(1)
+                       }}
+                       className="text-teal-600 border-teal-300 hover:bg-teal-100"
+                     >
+                       Clear Filter
+                     </Button>
+                   </div>
+                   {niftyIndexData ? (
+                     <p className="text-xs text-teal-700 mt-2">
+                       Showing returns data for stocks that are constituents of {selectedIndex}
+                     </p>
+                   ) : (
+                     <p className="text-xs text-orange-700 mt-2">
+                       ⚠️ Index data not available - showing all stocks (filter not applied)
+                     </p>
+                   )}
+                 </div>
+             )}
 
-            {/* Filter Summary */}
-            {selectedIndex && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="h-4 w-4 text-teal-600" />
-                    <span className="text-sm font-medium text-teal-900">
-                      Filtered by: <span className="font-semibold">{selectedIndex}</span>
-                    </span>
-                    <Badge variant="secondary" className="bg-teal-100 text-teal-800">
-                      {filteredAndSortedData.length} stocks
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedIndex("")
-                      setNiftyIndexData(null)
-                      setCurrentPage(1)
-                    }}
-                    className="text-teal-600 border-teal-300 hover:bg-teal-100"
-                  >
-                    Clear Filter
-                  </Button>
-                </div>
-                {niftyIndexData ? (
-                  <p className="text-xs text-teal-700 mt-2">
-                    Showing returns data for stocks that are constituents of {selectedIndex}
-                  </p>
-                ) : (
-                  <p className="text-xs text-orange-700 mt-2">
-                    ⚠️ Index data not available - showing all stocks (filter not applied)
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Search Form */}
-            <form onSubmit={handleSearch} className="space-y-4">
+             {/* Search Form */}
+             <form onSubmit={handleSearch} className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   placeholder="Search by symbol, fincode, or ISIN (e.g., RELIANCE, 500325, INE002A01018)"
@@ -1022,72 +960,9 @@ export default function ReturnsTab() {
                   )}
                 </div>
               </div>
-            </form>
-
-            {/* Advanced Controls */}
-            <div className="flex flex-wrap gap-2 pt-3 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAdvancedFilters(true)}
-                className="flex items-center space-x-1"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Advanced Filters</span>
-                {Object.keys(advancedFilterOptions).length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {Object.keys(advancedFilterOptions).length}
-                  </Badge>
-                )}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowColumnCustomizer(true)}
-                className="flex items-center space-x-1"
-              >
-                <Eye className="h-4 w-4" />
-                <span>Columns</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCharts(!showCharts)}
-                className="flex items-center space-x-1"
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span>{showCharts ? 'Hide' : 'Show'} Charts</span>
-              </Button>
-
-              {comparisonStocks.length > 0 && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleComparisonView}
-                  className="flex items-center space-x-1"
-                >
-                  <GitCompare className="h-4 w-4" />
-                  <span>Compare ({comparisonStocks.length})</span>
-                </Button>
-              )}
-
-              <div className="flex items-center space-x-2 ml-auto">
-                <Label htmlFor="advMetrics" className="text-xs text-gray-600">
-                  Advanced Metrics
-                </Label>
-                <input
-                  id="advMetrics"
-                  type="checkbox"
-                  checked={enableAdvancedMetrics}
-                  onChange={(e) => setEnableAdvancedMetrics(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
+             </form>
+           </div>
+         </CardContent>
       </Card>
 
       {/* Alerts */}
@@ -1230,10 +1105,6 @@ export default function ReturnsTab() {
               <table className="w-full border-collapse border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50">
-                    {/* NEW: Comparison Checkbox Column */}
-                    <th className="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <GitCompare className="h-4 w-4" title="Select for comparison" />
-                    </th>
                     <th 
                       className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("symbol")}
@@ -1323,62 +1194,13 @@ export default function ReturnsTab() {
                         </div>
                       </th>
                     ))}
-                    {/* NEW: Advanced Metrics Columns */}
-                    {enableAdvancedMetrics && (
-                      <>
-                        <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          <div className="flex items-center space-x-1">
-                            <Sparkles className="h-3 w-3" />
-                            <span>Composite</span>
-                          </div>
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          <div className="flex items-center space-x-1">
-                            <Star className="h-3 w-3" />
-                            <span>Rating</span>
-                          </div>
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          <div className="flex items-center space-x-1">
-                            <TrendingUp className="h-3 w-3" />
-                            <span>Trend</span>
-                          </div>
-                        </th>
-                        <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          <div className="flex items-center space-x-1">
-                            <Activity className="h-3 w-3" />
-                            <span>Risk</span>
-                          </div>
-                        </th>
-                      </>
-                    )}
                   </tr>
                 </thead>
                                  <tbody className="bg-white divide-y divide-gray-200">
-                   {currentData.map((record, index) => {
-                     // Calculate advanced metrics for this record
-                     const compositeScore = enableAdvancedMetrics ? calculateCompositeScore(record, returnsData?.data || []) : null
-                     const riskMetrics = enableAdvancedMetrics ? calculateRiskMetrics(record) : null
-                     const pattern = enableAdvancedMetrics ? analyzePattern(record) : null
-                     
-                     return (
+                   {currentData.map((record, index) => (
                      <tr key={`returns-${record.symbol}-${index}`} className="hover:bg-gray-50">
-                      {/* NEW: Comparison Checkbox */}
-                      <td className="border border-gray-200 px-2 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={comparisonStocks.includes(record.symbol)}
-                          onChange={() => toggleStockForComparison(record.symbol)}
-                          className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                        />
-                      </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900">
-                        <div className="flex items-center space-x-2">
-                          <span>{record.symbol}</span>
-                          {comparisonStocks.includes(record.symbol) && (
-                            <Badge variant="secondary" className="text-xs">Selected</Badge>
-                          )}
-                        </div>
+                        {record.symbol}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {record.fincode}
@@ -1439,51 +1261,8 @@ export default function ReturnsTab() {
                           </td>
                         )
                       })}
-                      {/* NEW: Advanced Metrics Data Cells */}
-                      {enableAdvancedMetrics && compositeScore && riskMetrics && pattern && (
-                        <>
-                          <td className="border border-gray-200 px-3 py-2 text-sm">
-                            <div className="space-y-1">
-                              <div className="font-semibold text-teal-700">
-                                {compositeScore.overall.toFixed(1)}
-                              </div>
-                              <ColorGradientBar 
-                                value={compositeScore.overall} 
-                                min={0} 
-                                max={100} 
-                                height={3} 
-                              />
-                            </div>
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-sm">
-                            <RatingStars rating={compositeScore.rating} />
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-sm">
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-1">
-                                <span className="font-medium text-xs">{pattern.trendDirection}</span>
-                                <TrendArrow value={pattern.trendDirection === 'Up' ? 10 : pattern.trendDirection === 'Down' ? -10 : 0} />
-                              </div>
-                              <Badge variant="outline" className="text-xs">
-                                {pattern.momentum}
-                              </Badge>
-                            </div>
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2 text-sm">
-                            <div className="space-y-1">
-                              <RiskBadge riskLevel={riskMetrics.riskLevel} />
-                              {riskMetrics.volatility !== null && (
-                                <div className="text-xs text-gray-600">
-                                  Vol: {riskMetrics.volatility.toFixed(1)}%
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </>
-                      )}
                     </tr>
-                    )
-                  })}
+                  ))}
                 </tbody>
                              </table>
              </div>
@@ -1600,34 +1379,6 @@ export default function ReturnsTab() {
             <p className="text-gray-600">Please wait while we fetch the latest stock returns data...</p>
           </CardContent>
         </Card>
-      )}
-
-      {/* NEW: Modals and Overlays */}
-      {showComparison && comparisonStocks.length > 0 && returnsData?.data && (
-        <StockComparison
-          stocks={prepareComparison(
-            returnsData.data.filter(r => comparisonStocks.includes(r.symbol)),
-            returnsData.data
-          )}
-          onClose={() => setShowComparison(false)}
-          onRemoveStock={handleRemoveFromComparison}
-        />
-      )}
-
-      {showAdvancedFilters && (
-        <AdvancedFilters
-          filters={advancedFilterOptions}
-          onUpdate={handleAdvancedFiltersUpdate}
-          onClose={() => setShowAdvancedFilters(false)}
-        />
-      )}
-
-      {showColumnCustomizer && (
-        <ColumnCustomizer
-          columns={columns}
-          onUpdate={handleColumnsUpdate}
-          onClose={() => setShowColumnCustomizer(false)}
-        />
       )}
     </div>
   )
