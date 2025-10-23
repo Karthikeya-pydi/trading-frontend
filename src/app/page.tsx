@@ -169,7 +169,9 @@ export default function HomePage() {
                 Provide your IIFL API credentials to establish a secure connection.
               </p>
               <a 
-                href="#" 
+                href="https://api.iiflsecurities.com/api-keys.html" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-block mt-2 text-teal-600 hover:text-teal-700 font-medium text-sm sm:text-base"
               >
                 Get your API keys here →
