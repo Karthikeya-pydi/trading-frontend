@@ -10,9 +10,9 @@ import {
   TrendingUp,
   Clock,
   BarChart3,
-  HelpCircle,
   Search,
-  Filter
+  Filter,
+  Settings
 } from "lucide-react"
 
 interface SidebarProps {
@@ -26,7 +26,7 @@ const navItems = [
   { title: "Watchlist", href: "/wishlist", icon: Eye },
   { title: "Trading", href: "/trading", icon: TrendingUp },
   { title: "Analysis", href: "/analysis", icon: BarChart3 },
-  { title: "Support", href: "/support", icon: HelpCircle },
+  { title: "Settings", href: "/settings", icon: Settings },
 ]
 
 export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {

@@ -718,8 +718,19 @@ export default function BhavcopyTab() {
         </Card>
       )}
 
-      {/* Empty State */}
-      {(!bhavcopyData || bhavcopyData.data.length === 0) && !loading && !error && (
+      {/* Loading State - Show first during initial load or when loading */}
+      {(loading || filesLoading) && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Bhavcopy Data</h3>
+            <p className="text-gray-600">Please wait while we fetch the latest market data...</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State - Only show when not loading and no data */}
+      {(!bhavcopyData || bhavcopyData.data.length === 0) && !loading && !filesLoading && !error && (
         <Card>
           <CardContent className="text-center py-12">
             <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -735,17 +746,6 @@ export default function BhavcopyTab() {
               )}
               {loading ? 'Fetching...' : 'Fetch Data'}
             </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Loading State */}
-      {loading && !bhavcopyData && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Bhavcopy Data</h3>
-            <p className="text-gray-600">Please wait while we fetch the latest market data...</p>
           </CardContent>
         </Card>
       )}

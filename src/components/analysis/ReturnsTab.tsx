@@ -1349,8 +1349,19 @@ export default function ReturnsTab() {
         </Card>
       )}
 
-      {/* Empty State */}
-      {!returnsData && !loading && !error && (
+      {/* Loading State - Show first during initial load or when loading */}
+      {(loading || filesLoading) && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Returns Data</h3>
+            <p className="text-gray-600">Please wait while we fetch the latest stock returns data...</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State - Only show when not loading and no data */}
+      {!returnsData && !loading && !filesLoading && !error && (
         <Card>
           <CardContent className="text-center py-12">
             <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -1366,17 +1377,6 @@ export default function ReturnsTab() {
               )}
               Fetch Data
             </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Returns Data</h3>
-            <p className="text-gray-600">Please wait while we fetch the latest stock returns data...</p>
           </CardContent>
         </Card>
       )}

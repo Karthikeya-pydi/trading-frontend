@@ -5,6 +5,7 @@ export const ROUTES = {
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
   SETUP: '/setup',
+  SETTINGS: '/settings',
   MARKET: '/market',
   TRADING: '/trading',
   AUTH_CALLBACK: '/auth/callback'
