@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,7 +23,12 @@ import {
   ChevronsRight,
   Award,
   Building2,
-  Download
+  Download,
+  Filter,
+  Play,
+  Sparkles,
+  Lightbulb,
+  ListChecks
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 import { MarketDataService } from "@/services/market-data.service"
@@ -43,6 +48,38 @@ import {
 
 // Use the new ReturnsRecord type from types/index.ts
 type StockReturns = ReturnsRecord
+
+// Map field names to actual record properties (handle case-insensitive and variations)
+const fieldMap: Record<string, keyof StockReturns> = {
+  'turnover': 'turnover',
+  'raw_score': 'raw_score',
+  'rawscore': 'raw_score',
+  'score': 'raw_score',
+  'latest_close': 'latest_close',
+  'close': 'latest_close',
+  'latest_volume': 'latest_volume',
+  'volume': 'latest_volume',
+  'returns_1_week': 'returns_1_week',
+  'returns_1_month': 'returns_1_month',
+  'returns_3_months': 'returns_3_months',
+  'returns_6_months': 'returns_6_months',
+  'returns_9_months': 'returns_9_months',
+  'returns_1_year': 'returns_1_year',
+  'returns_3_years': 'returns_3_years',
+  'returns_5_years': 'returns_5_years',
+  'score_change_1_week': 'score_change_1_week',
+  'score_change_1_month': 'score_change_1_month',
+  'score_change_3_months': 'score_change_3_months',
+  'score_change_6_months': 'score_change_6_months',
+  'score_change_9_months': 'score_change_9_months',
+  'score_change_1_year': 'score_change_1_year',
+  'raw_score_1_week_ago': 'raw_score_1_week_ago',
+  'raw_score_1_month_ago': 'raw_score_1_month_ago',
+  'raw_score_3_months_ago': 'raw_score_3_months_ago',
+  'raw_score_6_months_ago': 'raw_score_6_months_ago',
+  'raw_score_9_months_ago': 'raw_score_9_months_ago',
+  'raw_score_1_year_ago': 'raw_score_1_year_ago',
+}
 
 // Nifty indices data types
 interface NiftyIndex {
@@ -85,6 +122,11 @@ export default function ReturnsTab() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
+  const [filterQuery, setFilterQuery] = useState("")
+  const [filterError, setFilterError] = useState("")
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const filterPopoverRef = useRef<HTMLDivElement>(null)
+  const filterButtonRef = useRef<HTMLDivElement>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(50)
   const [sortField, setSortField] = useState<keyof StockReturns>("symbol")
@@ -314,6 +356,167 @@ export default function ReturnsTab() {
     }
   }, [selectedFile, fetchReturnsData])
 
+  // Parse a single condition (e.g., "turnover > 10000")
+  const parseSingleCondition = (condition: string): { fieldKey: keyof StockReturns; operator: string; value: number } | null => {
+    const trimmed = condition.trim()
+    if (!trimmed) return null
+
+    // Match patterns like: field operator value
+    // Supported operators: >, <, >=, <=, ==, !=, =, <>
+    const pattern = /^(\w+(?:_\w+)*)\s*(>=|<=|==|!=|<>|>|<|=)\s*([-\d.]+)$/i
+    const match = trimmed.match(pattern)
+    
+    if (!match) return null
+    
+    const [, field, operator, valueStr] = match
+    const value = parseFloat(valueStr)
+    
+    if (isNaN(value)) return null
+    
+    const fieldKey = fieldMap[field.toLowerCase()]
+    if (!fieldKey) return null
+    
+    return { fieldKey, operator, value }
+  }
+
+  // Validate filter query and set error state (supports AND/OR)
+  useEffect(() => {
+    if (!filterQuery.trim()) {
+      setFilterError("")
+      return
+    }
+
+    // Split by AND/OR (case insensitive, but preserve the split)
+    // This regex splits on " AND " or " OR " with surrounding whitespace
+    const parts = filterQuery.split(/(\s+AND\s+|\s+OR\s+)/i).filter(Boolean)
+    
+    if (parts.length === 0) {
+      setFilterError('Invalid filter format. Use: field operator value (e.g., turnover > 10000)')
+      return
+    }
+
+    // Validate each condition (every other part is a condition, in-between are connectors)
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim()
+      
+      // Skip connectors
+      if (part.toUpperCase() === 'AND' || part.toUpperCase() === 'OR') {
+        continue
+      }
+      
+      // Validate condition
+      const parsed = parseSingleCondition(part)
+      
+      if (!parsed) {
+        setFilterError(`Invalid condition: "${part}". Use format: field operator value (e.g., turnover > 10000)`)
+        return
+      }
+    }
+    
+    setFilterError("")
+  }, [filterQuery])
+
+  // Parse filter query (supports AND/OR logic)
+  const parseFilterQuery = useCallback((query: string): ((record: StockReturns) => boolean) | null => {
+    if (!query.trim()) return null
+
+    // Parse a single condition helper (inline to avoid dependency issues)
+    const parseSingleConditionInline = (condition: string): { fieldKey: keyof StockReturns; operator: string; value: number } | null => {
+      const trimmed = condition.trim()
+      if (!trimmed) return null
+
+      const pattern = /^(\w+(?:_\w+)*)\s*(>=|<=|==|!=|<>|>|<|=)\s*([-\d.]+)$/i
+      const match = trimmed.match(pattern)
+      
+      if (!match) return null
+      
+      const [, field, operator, valueStr] = match
+      const value = parseFloat(valueStr)
+      
+      if (isNaN(value)) return null
+      
+      const fieldKey = fieldMap[field.toLowerCase()]
+      if (!fieldKey) return null
+      
+      return { fieldKey, operator, value }
+    }
+
+    // Split by AND/OR (case insensitive, preserving connectors)
+    const parts = query.split(/(\s+AND\s+|\s+OR\s+)/i).filter(Boolean)
+    
+    if (parts.length === 0) return null
+
+    // Build filter functions for each condition
+    const conditions: Array<{ fn: (record: StockReturns) => boolean; connector: 'AND' | 'OR' | null }> = []
+    
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim()
+      
+      // Check if this is a connector
+      if (part.toUpperCase() === 'AND' || part.toUpperCase() === 'OR') {
+        if (conditions.length > 0) {
+          conditions[conditions.length - 1].connector = part.toUpperCase() as 'AND' | 'OR'
+        }
+        continue
+      }
+      
+      // Parse condition
+      const parsed = parseSingleConditionInline(part)
+      if (!parsed) continue
+      
+      const { fieldKey, operator, value } = parsed
+      
+      // Create filter function for this condition
+      const conditionFn = (record: StockReturns) => {
+        const fieldValue = record[fieldKey]
+        
+        if (fieldValue === null || fieldValue === undefined) {
+          return false
+        }
+        
+        const numValue = typeof fieldValue === 'number' ? fieldValue : parseFloat(String(fieldValue))
+        
+        if (isNaN(numValue)) {
+          return false
+        }
+        
+        switch (operator) {
+          case '>': return numValue > value
+          case '<': return numValue < value
+          case '>=': return numValue >= value
+          case '<=': return numValue <= value
+          case '==':
+          case '=': return numValue === value
+          case '!=':
+          case '<>': return numValue !== value
+          default: return false
+        }
+      }
+      
+      conditions.push({ fn: conditionFn, connector: null })
+    }
+    
+    if (conditions.length === 0) return null
+    
+    // Return combined filter function
+    return (record: StockReturns) => {
+      let result = conditions[0].fn(record)
+      
+      for (let i = 1; i < conditions.length; i++) {
+        const prevConnector = conditions[i - 1].connector || 'AND'
+        const currentResult = conditions[i].fn(record)
+        
+        if (prevConnector === 'AND') {
+          result = result && currentResult
+        } else {
+          result = result || currentResult
+        }
+      }
+      
+      return result
+    }
+  }, [])
+
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
     if (!returnsData?.data) return []
@@ -373,6 +576,14 @@ export default function ReturnsTab() {
       )
     }
 
+    // Apply filter query
+    if (filterQuery.trim()) {
+      const filterFn = parseFilterQuery(filterQuery)
+      if (filterFn) {
+        filtered = filtered.filter(filterFn)
+      }
+    }
+
     // Apply sorting
     filtered.sort((a, b) => {
       const aValue = a[sortField]
@@ -392,7 +603,7 @@ export default function ReturnsTab() {
     })
 
     return filtered
-  }, [returnsData, selectedIndex, niftyIndexData, searchQuery, sortField, sortDirection])
+  }, [returnsData, selectedIndex, niftyIndexData, searchQuery, filterQuery, sortField, sortDirection, parseFilterQuery])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
@@ -664,6 +875,28 @@ export default function ReturnsTab() {
   useEffect(() => {
     fetchNiftyIndices()
   }, [fetchNiftyIndices])
+
+  // Close filter popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isFilterOpen &&
+        filterPopoverRef.current &&
+        filterButtonRef.current &&
+        !filterPopoverRef.current.contains(event.target as Node) &&
+        !filterButtonRef.current.contains(event.target as Node)
+      ) {
+        setIsFilterOpen(false)
+      }
+    }
+
+    if (isFilterOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [isFilterOpen])
 
   return (
     <div className="space-y-6">
@@ -1018,16 +1251,123 @@ export default function ReturnsTab() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button
-                    onClick={exportToCSV}
-                    variant="outline"
-                    size="sm"
-                    disabled={!filteredAndSortedData.length}
-                    className="flex items-center justify-center space-x-2 w-full sm:w-auto"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Download CSV</span>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={exportToCSV}
+                      variant="outline"
+                      size="sm"
+                      disabled={!filteredAndSortedData.length}
+                      className="flex items-center justify-center space-x-2 w-full sm:w-auto"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download CSV</span>
+                    </Button>
+                    <div className="relative" ref={filterButtonRef}>
+                      <Button 
+                        type="button"
+                        variant={filterQuery && !filterError ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsFilterOpen(!isFilterOpen)}
+                        className="relative"
+                        disabled={loading}
+                      >
+                        <Filter className="h-4 w-4" />
+                        {filterQuery && !filterError && (
+                          <Badge 
+                            variant="secondary" 
+                            className="absolute -top-1.5 -right-1.5 h-5 w-5 p-0 flex items-center justify-center bg-blue-600 text-white text-xs"
+                          >
+                            1
+                          </Badge>
+                        )}
+                      </Button>
+                      {/* Filter Popover */}
+                      {isFilterOpen && (
+                        <div 
+                          ref={filterPopoverRef}
+                          className="absolute top-full right-0 mt-2 z-50 w-full sm:w-[520px] max-w-[90vw] bg-white border border-gray-200 rounded-3xl shadow-2xl p-0"
+                        >
+                          <div className="relative space-y-5 rounded-3xl border border-teal-100 bg-gradient-to-br from-white via-teal-50/50 to-blue-50/40 p-5 sm:p-6">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsFilterOpen(false)}
+                              className="absolute right-4 top-4 h-7 w-7 p-0 text-gray-500 hover:text-gray-700"
+                            >
+                              <span className="sr-only">Close</span>
+                              ×
+                            </Button>
+                            <div className="space-y-2 pr-8">
+                              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-teal-600">
+                                <Sparkles className="h-4 w-4" />
+                                filters
+                              </div>
+                              <h3 className="text-lg font-semibold text-slate-900">Build your custom query</h3>
+                              <p className="text-sm text-slate-600">
+                                Combine any metrics with <span className="font-semibold">AND</span> or <span className="font-semibold">OR</span>. Each condition can go on a new line for clarity.
+                              </p>
+                            </div>
+                            <div>
+                              <textarea
+                                id="filter-query-popover"
+                                placeholder={`turnover > 10000 AND\nraw_score < 89 AND\nreturns_1_year >= 10`}
+                                value={filterQuery}
+                                onChange={(e) => {
+                                  setFilterQuery(e.target.value)
+                                  setFilterError("")
+                                  setCurrentPage(1)
+                                }}
+                                disabled={loading}
+                                rows={6}
+                                className="w-full min-h-[120px] px-4 py-3 text-sm border border-teal-200/70 rounded-2xl bg-white/90 backdrop-blur-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed font-mono leading-6"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Escape') {
+                                    setIsFilterOpen(false)
+                                  }
+                                }}
+                                autoFocus
+                              />
+                              {filterError && (
+                                <Alert variant="destructive" className="mt-3">
+                                  <AlertCircle className="h-4 w-4" />
+                                  <AlertDescription className="text-xs">{filterError}</AlertDescription>
+                                </Alert>
+                              )}
+                            </div>
+                            <div className="flex items-start gap-2 text-xs text-slate-600">
+                              <Lightbulb className="mt-0.5 h-4 w-4 text-teal-600" />
+                              <span>
+                                Tip: use numbers without commas. Example — <code className="font-mono bg-white/80 px-1.5 py-0.5 rounded">latest_volume &gt; 1000000</code>
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setFilterQuery("")
+                                  setFilterError("")
+                                  setCurrentPage(1)
+                                }}
+                                disabled={loading}
+                              >
+                                Clear
+                              </Button>
+                              <Button
+                                type="button"
+                                onClick={() => setIsFilterOpen(false)}
+                                className="bg-teal-600 hover:bg-teal-700 text-white"
+                                disabled={loading || !!filterError}
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Run query
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1063,7 +1403,32 @@ export default function ReturnsTab() {
               )}
             </CardDescription>
           </CardHeader>
-                     <CardContent>
+          <CardContent>
+            {/* Active Filter Query Indicator */}
+            {filterQuery && !filterError && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Filter className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">
+                      Active filter: <span className="font-semibold">{filterQuery}</span>
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFilterQuery("")
+                      setFilterError("")
+                      setCurrentPage(1)
+                    }}
+                    className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                  >
+                    Clear Filter
+                  </Button>
+                </div>
+              </div>
+            )}
              {/* No Results Message */}
              {filteredAndSortedData.length === 0 && selectedIndex && (
                <div className="text-center py-8">
