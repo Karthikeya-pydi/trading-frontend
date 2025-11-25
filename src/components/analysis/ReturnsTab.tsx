@@ -28,7 +28,8 @@ import {
   Play,
   Sparkles,
   Lightbulb,
-  ListChecks
+  ListChecks,
+  Calendar
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 import { MarketDataService } from "@/services/market-data.service"
@@ -45,6 +46,7 @@ import {
   ReturnsFile,
   ReturnsRecord
 } from "@/types"
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, parse } from "date-fns"
 
 // Use the new ReturnsRecord type from types/index.ts
 type StockReturns = ReturnsRecord
@@ -79,6 +81,14 @@ const fieldMap: Record<string, keyof StockReturns> = {
   'raw_score_6_months_ago': 'raw_score_6_months_ago',
   'raw_score_9_months_ago': 'raw_score_9_months_ago',
   'raw_score_1_year_ago': 'raw_score_1_year_ago',
+  'sector': 'sector',
+  'industry': 'industry',
+  'market_cap_crore': 'market_cap_crore',
+  'market_cap': 'market_cap_crore',
+  'roe_percent': 'roe_percent',
+  'roe': 'roe_percent',
+  'roce_percent': 'roce_percent',
+  'roce': 'roce_percent',
 }
 
 // Nifty indices data types
@@ -136,6 +146,9 @@ export default function ReturnsTab() {
   const [availableFiles, setAvailableFiles] = useState<ReturnsFile[]>([])
   const [selectedFile, setSelectedFile] = useState<string>("")
   const [filesLoading, setFilesLoading] = useState(false)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(new Date())
+  const calendarRef = useRef<HTMLDivElement>(null)
 
   // Nifty indices state
   const [niftyIndices, setNiftyIndices] = useState<NiftyIndex[]>([])
@@ -196,19 +209,20 @@ export default function ReturnsTab() {
       
       // Auto-select the most recent file if none selected
       if (!selectedFile && filesResponse.files.length > 0) {
-        const sortedFiles = filesResponse.files.sort((a, b) => 
-          new Date(b.last_modified).getTime() - new Date(a.last_modified).getTime()
-        )
-        const mostRecentFile = sortedFiles[0]
-        console.log('Auto-selecting file:', { 
-          filename: mostRecentFile.filename, 
-          type: typeof mostRecentFile.filename,
-          fileObject: mostRecentFile 
+        const sortedFiles = filesResponse.files.sort((a, b) => {
+          // Sort by date extracted from filename, fallback to last_modified
+          const dateA = extractDateFromFilename(a.filename) || new Date(a.last_modified)
+          const dateB = extractDateFromFilename(b.filename) || new Date(b.last_modified)
+          return dateB.getTime() - dateA.getTime()
         })
+        const mostRecentFile = sortedFiles[0]
         
         // Ensure we have a valid filename string
         if (mostRecentFile && typeof mostRecentFile.filename === 'string' && mostRecentFile.filename.trim()) {
           setSelectedFile(mostRecentFile.filename)
+          // Set calendar to show the month of the most recent file
+          const fileDate = extractDateFromFilename(mostRecentFile.filename) || new Date(mostRecentFile.last_modified)
+          setCalendarMonth(fileDate)
         } else {
           console.error('Invalid file object for auto-selection:', mostRecentFile)
           setError('No valid files available for auto-selection')
@@ -252,20 +266,165 @@ export default function ReturnsTab() {
   }, [selectedFile])
 
 
-  // Handle file selection change
-  const handleFileChange = (filename: string) => {
-    console.log('handleFileChange called with:', { filename, type: typeof filename })
+  // Extract date from filename (supports formats like: 24-11-2025, 2025-11-24, etc.)
+  const extractDateFromFilename = (filename: string): Date | null => {
+    if (!filename) return null
     
-    // Validate the filename
-    if (!filename || typeof filename !== 'string' || !filename.trim()) {
-      console.error('Invalid filename in handleFileChange:', filename)
-      setError('Invalid file selection')
-      return
+    // Try DD-MM-YYYY format first (e.g., 24-11-2025, returns_24-11-2025.csv)
+    const ddMMyyyyMatch = filename.match(/(\d{2})-(\d{2})-(\d{4})/)
+    if (ddMMyyyyMatch) {
+      const [, day, month, year] = ddMMyyyyMatch
+      try {
+        const date = parse(`${day}-${month}-${year}`, 'dd-MM-yyyy', new Date())
+        if (!isNaN(date.getTime()) && date.getFullYear() > 2000 && date.getFullYear() < 2100) {
+          return date
+        }
+      } catch (e) {
+        console.warn('Failed to parse DD-MM-YYYY date:', e)
+      }
     }
     
-    setSelectedFile(filename)
-    setCurrentPage(1) // Reset to first page when changing files
+    // Try YYYY-MM-DD format (e.g., 2025-11-24, returns_2025-11-24.csv)
+    const yyyyMMddMatch = filename.match(/(\d{4})-(\d{2})-(\d{2})/)
+    if (yyyyMMddMatch) {
+      const [, year, month, day] = yyyyMMddMatch
+      try {
+        const date = parse(`${year}-${month}-${day}`, 'yyyy-MM-dd', new Date())
+        if (!isNaN(date.getTime()) && date.getFullYear() > 2000 && date.getFullYear() < 2100) {
+          return date
+        }
+      } catch (e) {
+        console.warn('Failed to parse YYYY-MM-DD date:', e)
+      }
+    }
+    
+    // Try DD/MM/YYYY format
+    const ddMMyyyySlashMatch = filename.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+    if (ddMMyyyySlashMatch) {
+      const [, day, month, year] = ddMMyyyySlashMatch
+      try {
+        const date = parse(`${day}/${month}/${year}`, 'dd/MM/yyyy', new Date())
+        if (!isNaN(date.getTime()) && date.getFullYear() > 2000 && date.getFullYear() < 2100) {
+          return date
+        }
+      } catch (e) {
+        console.warn('Failed to parse DD/MM/YYYY date:', e)
+      }
+    }
+    
+    return null
   }
+
+  // Find file by date from calendar
+  const findFileByDate = useCallback((date: Date): ReturnsFile | null => {
+    const dateStr = format(date, 'dd-MM-yyyy')
+    const dateStrAlt = format(date, 'yyyy-MM-dd')
+    
+    console.log('Finding file for date:', dateStr, 'Available files:', availableFiles.length)
+    
+    // Try to find exact match
+    const matchedFile = availableFiles.find(file => {
+      const fileDate = extractDateFromFilename(file.filename)
+      if (!fileDate) {
+        console.log('No date extracted from filename:', file.filename)
+        return false
+      }
+      
+      const fileDateStr = format(fileDate, 'dd-MM-yyyy')
+      const fileDateStrAlt = format(fileDate, 'yyyy-MM-dd')
+      const isMatch = fileDateStr === dateStr || fileDateStrAlt === dateStrAlt || isSameDay(fileDate, date)
+      
+      if (isMatch) {
+        console.log('Matched file:', file.filename, 'Date:', fileDateStr)
+      }
+      
+      return isMatch
+    })
+    
+    if (!matchedFile) {
+      console.log('No file matched for date:', dateStr)
+      // Log all available file dates for debugging
+      availableFiles.forEach(file => {
+        const fileDate = extractDateFromFilename(file.filename)
+        if (fileDate) {
+          console.log('Available file:', file.filename, 'Date:', format(fileDate, 'dd-MM-yyyy'))
+        }
+      })
+    }
+    
+    return matchedFile || null
+  }, [availableFiles])
+
+  // Get dates that have available files
+  const getAvailableDates = useMemo(() => {
+    const dates = new Map<string, ReturnsFile>()
+    availableFiles.forEach(file => {
+      const fileDate = extractDateFromFilename(file.filename)
+      if (fileDate) {
+        const dateKey = format(fileDate, 'yyyy-MM-dd')
+        dates.set(dateKey, file)
+      }
+    })
+    return dates
+  }, [availableFiles])
+
+  // Generate calendar days
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(calendarMonth)
+    const monthEnd = endOfMonth(calendarMonth)
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
+    
+    // Get first day of month to pad calendar (Monday = 0)
+    const firstDayOfWeek = getDay(monthStart)
+    const paddingDays = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1
+    
+    return {
+      days: daysInMonth,
+      paddingDays
+    }
+  }, [calendarMonth])
+
+  // Handle date selection from calendar
+  const handleDateSelect = async (date: Date) => {
+    const matchedFile = findFileByDate(date)
+    
+    if (matchedFile) {
+      console.log('Date selected:', format(date, 'dd-MM-yyyy'), 'Matched file:', matchedFile.filename)
+      setSelectedFile(matchedFile.filename)
+      setCurrentPage(1)
+      setIsCalendarOpen(false)
+      setError("")
+      // Fetch the data using the exact filename from the file object
+      try {
+        await fetchReturnsData(matchedFile.filename)
+      } catch (err) {
+        console.error('Error fetching file data:', err)
+        setError(`Failed to load data for ${format(date, 'dd-MM-yyyy')}. File: ${matchedFile.filename}`)
+        setReturnsData(null)
+      }
+    } else {
+      console.log('No file found for date:', format(date, 'dd-MM-yyyy'))
+      setError(`No data available for ${format(date, 'dd-MM-yyyy')}`)
+      setSuccess("")
+      setIsCalendarOpen(false)
+    }
+  }
+
+  // Close calendar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setIsCalendarOpen(false)
+      }
+    }
+
+    if (isCalendarOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [isCalendarOpen])
 
   // Fetch Nifty indices from API
   const fetchNiftyIndices = useCallback(async () => {
@@ -739,6 +898,18 @@ export default function ReturnsTab() {
     return value
   }
 
+  // Format market cap value
+  const formatMarketCap = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '-'
+    return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Cr`
+  }
+
+  // Format percentage value
+  const formatPercentage = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '-'
+    return `${value.toFixed(2)}%`
+  }
+
   // Get score change color
   const getScoreChangeColor = (value: number | null | undefined) => {
     if (value === null || value === undefined) return 'text-gray-500'
@@ -792,7 +963,12 @@ export default function ReturnsTab() {
       '3M Ago Score',
       '6M Ago Score',
       '9M Ago Score',
-      '1Y Ago Score'
+      '1Y Ago Score',
+      'Sector',
+      'Industry',
+      'Market Cap (Cr)',
+      'ROE (%)',
+      'ROCE (%)'
     ]
 
     // Convert data to CSV format
@@ -830,7 +1006,12 @@ export default function ReturnsTab() {
       record.raw_score_3_months_ago || '',
       record.raw_score_6_months_ago || '',
       record.raw_score_9_months_ago || '',
-      record.raw_score_1_year_ago || ''
+      record.raw_score_1_year_ago || '',
+      record.sector || '',
+      record.industry || '',
+      record.market_cap_crore || '',
+      record.roe_percent || '',
+      record.roce_percent || ''
     ])
 
     // Create CSV content
@@ -861,14 +1042,15 @@ export default function ReturnsTab() {
 
   // Handle index selection change
   const handleIndexChange = (indexName: string) => {
-    setSelectedIndex(indexName)
+    if (indexName === "all") {
+      setSelectedIndex("")
+      setNiftyIndexData(null)
+    } else {
+      setSelectedIndex(indexName)
+      fetchNiftyIndexData(indexName)
+    }
     setNiftyCurrentPage(1) // Reset to first page when selecting new index
     setCurrentPage(1) // Reset stock returns pagination when filter changes
-    if (indexName) {
-      fetchNiftyIndexData(indexName)
-    } else {
-      setNiftyIndexData(null)
-    }
   }
 
   // Auto-refresh Nifty indices on mount
@@ -923,192 +1105,6 @@ export default function ReturnsTab() {
           </Button>
         </div>
       </div>
-
-      {/* Nifty Indices Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Building2 className="h-5 w-5 text-teal-600" />
-            <span>Nifty Indices Analysis</span>
-          </CardTitle>
-          <CardDescription>
-            Select a Nifty index to view its constituent stocks and performance data
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <Label htmlFor="nifty-index-select" className="mb-2 block">Select Nifty Index</Label>
-                <Select value={selectedIndex} onValueChange={handleIndexChange}>
-                  <SelectTrigger id="nifty-index-select" className="w-full">
-                    <SelectValue placeholder="Choose a Nifty index..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {niftyIndices.map((index, idx) => (
-                      <SelectItem key={`index-${index.filename || index.index_name || idx}`} value={index.index_name}>
-                        {index.index_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button
-                  onClick={fetchNiftyIndices}
-                  variant="outline"
-                  size="sm"
-                  disabled={niftyLoading}
-                  className="w-full sm:w-auto"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${niftyLoading ? "animate-spin" : ""}`} />
-                  Refresh Indices
-                </Button>
-              </div>
-            </div>
-
-            {/* Nifty Index Data Display */}
-            {niftyError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{niftyError}</AlertDescription>
-              </Alert>
-            )}
-
-            {niftyLoading && (
-                          <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-teal-600 mr-3" />
-              <span className="text-gray-600">Loading index data...</span>
-            </div>
-            )}
-
-            {niftyIndexData && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-teal-50 p-4 rounded-lg">
-                    <div className="text-sm font-medium text-teal-600">Index Name</div>
-                    <div className="text-lg font-semibold text-teal-900">{niftyIndexData.index_name}</div>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="text-sm font-medium text-green-600">Total Constituents</div>
-                    <div className="text-lg font-semibold text-green-900">{niftyIndexData.total_constituents}</div>
-                  </div>
-                </div>
-
-                                 {/* Constituents Table */}
-                 <div className="space-y-4">
-                   <div className="text-sm text-gray-600">
-                     Showing {niftyStartIndex + 1}-{Math.min(niftyEndIndex, niftyIndexData.data.length)} of {niftyIndexData.data.length} constituents
-                   </div>
-                   
-                   <div className="overflow-x-auto">
-                     <table className="w-full border-collapse border border-gray-200">
-                       <thead>
-                         <tr className="bg-gray-50">
-                                                       {niftyIndexData.columns.map((column) => (
-                              <th key={`nifty-header-${column}`} className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {column}
-                              </th>
-                            ))}
-                         </tr>
-                       </thead>
-                                               <tbody className="bg-white divide-y divide-gray-200">
-                          {currentNiftyData.map((row, index) => (
-                            <tr key={`nifty-${index}`} className="hover:bg-gray-50">
-                              {niftyIndexData.columns.map((column) => (
-                                <td key={`${index}-${column}`} className="border border-gray-200 px-3 py-2 text-sm text-gray-900">
-                                  {row[column]}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                     </table>
-                   </div>
-
-                   {/* Nifty Indices Pagination */}
-                   {niftyTotalPages > 1 && (
-                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                       <div className="text-xs sm:text-sm text-gray-700">
-                         Page {niftyCurrentPage} of {niftyTotalPages}
-                       </div>
-                       <div className="flex items-center space-x-1 sm:space-x-2">
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => goToNiftyPage(1)}
-                           disabled={niftyCurrentPage === 1}
-                           className="hidden sm:flex"
-                         >
-                           <ChevronsLeft className="h-4 w-4" />
-                         </Button>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => goToNiftyPage(niftyCurrentPage - 1)}
-                           disabled={niftyCurrentPage === 1}
-                         >
-                           <ChevronLeft className="h-4 w-4" />
-                         </Button>
-                         
-                         <div className="flex items-center space-x-1">
-                           <span className="text-sm px-2">
-                             {niftyCurrentPage} / {niftyTotalPages}
-                           </span>
-                           <div className="hidden sm:flex items-center space-x-1">
-                             {Array.from({ length: Math.min(5, niftyTotalPages) }, (_, i) => {
-                               let pageNum
-                               if (niftyTotalPages <= 5) {
-                                 pageNum = i + 1
-                               } else if (niftyCurrentPage <= 3) {
-                                 pageNum = i + 1
-                               } else if (niftyCurrentPage >= niftyTotalPages - 2) {
-                                 pageNum = niftyTotalPages - 4 + i
-                               } else {
-                                 pageNum = niftyCurrentPage - 2 + i
-                               }
-                               
-                               return (
-                                 <Button
-                                   key={`nifty-page-${pageNum}`}
-                                   variant={niftyCurrentPage === pageNum ? "default" : "outline"}
-                                   size="sm"
-                                   onClick={() => goToNiftyPage(pageNum)}
-                                   className="w-8 h-8 p-0"
-                                 >
-                                   {pageNum}
-                                 </Button>
-                               )
-                             })}
-                           </div>
-                         </div>
-                         
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => goToNiftyPage(niftyCurrentPage + 1)}
-                           disabled={niftyCurrentPage === niftyTotalPages}
-                         >
-                           <ChevronRight className="h-4 w-4" />
-                         </Button>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => goToNiftyPage(niftyTotalPages)}
-                           disabled={niftyCurrentPage === niftyTotalPages}
-                           className="hidden sm:flex"
-                         >
-                           <ChevronsRight className="h-4 w-4" />
-                         </Button>
-                       </div>
-                     </div>
-                   )}
-                 </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Search Section */}
       <Card>
@@ -1230,22 +1226,141 @@ export default function ReturnsTab() {
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="file-select-inline" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                      File:
-                    </Label>
-                    <Select value={selectedFile} onValueChange={handleFileChange} disabled={filesLoading}>
-                      <SelectTrigger id="file-select-inline" className="w-full sm:w-48">
-                        <SelectValue placeholder={filesLoading ? "Loading..." : "Select file"} />
+                    <div className="relative" ref={calendarRef}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                        disabled={filesLoading}
+                        className="flex items-center gap-2"
+                      >
+                        <Calendar className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Calendar Popup */}
+                      {isCalendarOpen && (
+                      <div 
+                        className="absolute top-full right-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-[320px] max-w-[calc(100vw-2rem)]"
+                        style={{ right: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        {/* Calendar Header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <h3 className="text-sm font-semibold">
+                            {format(calendarMonth, 'MMMM yyyy')}
+                          </h3>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                            className="h-8 w-8 p-0"
+                            disabled={format(addMonths(calendarMonth, 1), 'yyyy-MM') > format(new Date(), 'yyyy-MM')}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* Calendar Days Header */}
+                        <div className="grid grid-cols-7 gap-1 mb-2">
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                            <div key={day} className="text-xs font-medium text-gray-500 text-center py-1">
+                              {day}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Calendar Grid */}
+                        <div className="grid grid-cols-7 gap-1">
+                          {/* Padding days */}
+                          {Array.from({ length: calendarDays.paddingDays }).map((_, i) => (
+                            <div key={`pad-${i}`} className="h-9" />
+                          ))}
+                          
+                          {/* Calendar days */}
+                          {calendarDays.days.map((day) => {
+                            const dayStr = format(day, 'yyyy-MM-dd')
+                            const fileForDate = getAvailableDates.get(dayStr)
+                            const hasData = !!fileForDate
+                            const isSelected = selectedFile && fileForDate?.filename === selectedFile
+                            const isToday = isSameDay(day, new Date())
+                            
+                            // Check if date is in the past or today
+                            const now = new Date()
+                            const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate())
+                            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                            const isSelectable = dayStart <= todayStart
+                            
+                            return (
+                              <button
+                                key={dayStr}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  if (isSelectable) {
+                                    handleDateSelect(day)
+                                  }
+                                }}
+                                disabled={!isSelectable}
+                                className={`
+                                  h-9 w-9 text-sm rounded-md transition-colors
+                                  ${isSelected 
+                                    ? 'bg-teal-600 text-white font-semibold hover:bg-teal-700' 
+                                    : hasData && isSelectable
+                                      ? 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 cursor-pointer active:bg-teal-200'
+                                      : isSelectable
+                                        ? 'text-gray-600 hover:bg-gray-100 cursor-pointer active:bg-gray-200'
+                                        : 'text-gray-300 cursor-not-allowed opacity-50'
+                                  }
+                                  ${isToday && !isSelected ? 'ring-2 ring-teal-500' : ''}
+                                `}
+                                title={isSelectable 
+                                  ? (hasData ? `Data available - ${format(day, 'dd-MM-yyyy')}` : `No data - ${format(day, 'dd-MM-yyyy')}`)
+                                  : 'Future dates are not available'
+                                }
+                              >
+                                {format(day, 'd')}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        
+                        {/* Legend */}
+                        <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-center gap-4 text-xs">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded bg-teal-50 border border-teal-200"></div>
+                            <span className="text-gray-600">Data available</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded bg-gray-100"></div>
+                            <span className="text-gray-600">No data</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    </div>
+                    
+                    {/* Nifty Indices Dropdown */}
+                    <Select value={selectedIndex || "all"} onValueChange={handleIndexChange} disabled={niftyLoading}>
+                      <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Select Nifty Index..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableFiles.map((file) => (
-                          <SelectItem key={file.filename} value={file.filename}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{file.filename}</span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(file.last_modified).toLocaleDateString()} • {file.size_mb} MB
-                              </span>
-                            </div>
+                        <SelectItem value="all">All Stocks</SelectItem>
+                        {niftyIndices.map((index, idx) => (
+                          <SelectItem key={`index-${index.filename || index.index_name || idx}`} value={index.index_name}>
+                            {index.index_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1559,6 +1674,62 @@ export default function ReturnsTab() {
                         </div>
                       </th>
                     ))}
+                    {/* Company Information Columns */}
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("sector")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Sector</span>
+                        {sortField === "sector" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("industry")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Industry</span>
+                        {sortField === "industry" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("market_cap_crore")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Market Cap (Cr)</span>
+                        {sortField === "market_cap_crore" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("roe_percent")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>ROE (%)</span>
+                        {sortField === "roe_percent" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("roce_percent")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>ROCE (%)</span>
+                        {sortField === "roce_percent" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                                  <tbody className="bg-white divide-y divide-gray-200">
@@ -1626,6 +1797,22 @@ export default function ReturnsTab() {
                           </td>
                         )
                       })}
+                      {/* Company Information Data Cells */}
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {record.sector || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {record.industry || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatMarketCap(record.market_cap_crore)}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatPercentage(record.roe_percent)}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatPercentage(record.roce_percent)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

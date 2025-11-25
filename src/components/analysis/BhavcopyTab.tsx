@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,7 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Calendar
 } from "lucide-react"
 import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 import { MarketDataService } from "@/services/market-data.service"
@@ -36,6 +37,7 @@ import {
   BhavcopyFileDataResponse,
   BhavcopyFile
 } from "@/types"
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, parse } from "date-fns"
 
 // Bhavcopy data types
 interface BhavcopyRecord {
@@ -79,6 +81,9 @@ export default function BhavcopyTab() {
   const [availableFiles, setAvailableFiles] = useState<BhavcopyFile[]>([])
   const [selectedFile, setSelectedFile] = useState<string>("")
   const [filesLoading, setFilesLoading] = useState(false)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(new Date())
+  const calendarRef = useRef<HTMLDivElement>(null)
 
   // Fetch available bhavcopy files
   const fetchAvailableFiles = useCallback(async () => {
@@ -89,10 +94,16 @@ export default function BhavcopyTab() {
       
       // Auto-select the most recent file if none selected
       if (!selectedFile && filesResponse.files.length > 0) {
-        const sortedFiles = filesResponse.files.sort((a, b) => 
-          new Date(b.last_modified).getTime() - new Date(a.last_modified).getTime()
-        )
+        const sortedFiles = filesResponse.files.sort((a, b) => {
+          // Sort by date extracted from filename, fallback to last_modified
+          const dateA = extractDateFromFilename(a.filename) || new Date(a.last_modified)
+          const dateB = extractDateFromFilename(b.filename) || new Date(b.last_modified)
+          return dateB.getTime() - dateA.getTime()
+        })
         setSelectedFile(sortedFiles[0].filename)
+        // Set calendar to show the month of the most recent file
+        const fileDate = extractDateFromFilename(sortedFiles[0].filename) || new Date(sortedFiles[0].last_modified)
+        setCalendarMonth(fileDate)
       }
     } catch (err) {
       console.error('Error fetching bhavcopy files:', err)
@@ -253,10 +264,109 @@ export default function BhavcopyTab() {
   }, [selectedFile, fetchBhavcopyData])
 
   // Handle file selection change
-  const handleFileChange = (filename: string) => {
-    setSelectedFile(filename)
-    setCurrentPage(1) // Reset to first page when changing files
+  // Extract date from filename (format: sec_bhavdata_full_18112025 where 18112025 = 18-11-2025, so DDMMYYYY)
+  const extractDateFromFilename = (filename: string): Date | null => {
+    if (!filename) return null
+    
+    // Try to find 8-digit date pattern (DDMMYYYY format)
+    const dateMatch = filename.match(/(\d{8})/)
+    if (dateMatch) {
+      const dateStr = dateMatch[1] // e.g., "18112025"
+      try {
+        // Parse DDMMYYYY format: 18112025 = 18-11-2025
+        const day = dateStr.substring(0, 2)
+        const month = dateStr.substring(2, 4)
+        const year = dateStr.substring(4, 8)
+        const date = parse(`${day}-${month}-${year}`, 'dd-MM-yyyy', new Date())
+        if (!isNaN(date.getTime()) && date.getFullYear() > 2000 && date.getFullYear() < 2100) {
+          return date
+        }
+      } catch (e) {
+        console.warn('Failed to parse date from filename:', e)
+      }
+    }
+    
+    return null
   }
+
+  // Find file by date from calendar
+  const findFileByDate = useCallback((date: Date): BhavcopyFile | null => {
+    const dateStr = format(date, 'ddMMyyyy') // e.g., "18112025"
+    
+    // Try to find exact match in filename
+    const matchedFile = availableFiles.find(file => {
+      const fileDate = extractDateFromFilename(file.filename)
+      if (!fileDate) return false
+      
+      const fileDateStr = format(fileDate, 'ddMMyyyy')
+      return fileDateStr === dateStr || isSameDay(fileDate, date)
+    })
+    
+    return matchedFile || null
+  }, [availableFiles])
+
+  // Get dates that have available files
+  const getAvailableDates = useMemo(() => {
+    const dates = new Map<string, BhavcopyFile>()
+    availableFiles.forEach(file => {
+      const fileDate = extractDateFromFilename(file.filename)
+      if (fileDate) {
+        const dateKey = format(fileDate, 'yyyy-MM-dd')
+        dates.set(dateKey, file)
+      }
+    })
+    return dates
+  }, [availableFiles])
+
+  // Generate calendar days
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(calendarMonth)
+    const monthEnd = endOfMonth(calendarMonth)
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
+    
+    // Get first day of month to pad calendar (Monday = 0)
+    const firstDayOfWeek = getDay(monthStart)
+    const paddingDays = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1
+    
+    return {
+      days: daysInMonth,
+      paddingDays
+    }
+  }, [calendarMonth])
+
+  // Handle date selection from calendar
+  const handleDateSelect = async (date: Date) => {
+    const matchedFile = findFileByDate(date)
+    
+    if (matchedFile) {
+      setSelectedFile(matchedFile.filename)
+      setCurrentPage(1)
+      setIsCalendarOpen(false)
+      setError("")
+      // Fetch the data
+      await fetchBhavcopyData(matchedFile.filename)
+    } else {
+      setError(`No data available for ${format(date, 'dd-MM-yyyy')}`)
+      setSuccess("")
+      setIsCalendarOpen(false)
+    }
+  }
+
+  // Close calendar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setIsCalendarOpen(false)
+      }
+    }
+
+    if (isCalendarOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [isCalendarOpen])
 
   return (
     <div className="space-y-6">
@@ -372,27 +482,129 @@ export default function BhavcopyTab() {
                   <Activity className="h-5 w-5 text-green-600" />
                   <span className="text-xl font-semibold">Market Data Table</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="file-select-inline" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                    File:
-                  </Label>
-                  <Select value={selectedFile} onValueChange={handleFileChange} disabled={filesLoading}>
-                    <SelectTrigger id="file-select-inline" className="w-full sm:w-48">
-                      <SelectValue placeholder={filesLoading ? "Loading..." : "Select file"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableFiles.map((file) => (
-                        <SelectItem key={file.filename} value={file.filename}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{file.filename}</span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(file.last_modified).toLocaleDateString()} • {file.size_mb} MB
-                            </span>
+                <div className="relative" ref={calendarRef}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                    disabled={filesLoading}
+                    className="flex items-center gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                  </Button>
+                  
+                  {/* Calendar Popup */}
+                  {isCalendarOpen && (
+                    <div 
+                      className="absolute top-full right-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-[320px] max-w-[calc(100vw-2rem)]"
+                      style={{ right: 0 }}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      {/* Calendar Header */}
+                      <div className="flex items-center justify-between mb-4">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <h3 className="text-sm font-semibold">
+                          {format(calendarMonth, 'MMMM yyyy')}
+                        </h3>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                          className="h-8 w-8 p-0"
+                          disabled={format(addMonths(calendarMonth, 1), 'yyyy-MM') > format(new Date(), 'yyyy-MM')}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {/* Calendar Days Header */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                          <div key={day} className="text-xs font-medium text-gray-500 text-center py-1">
+                            {day}
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </div>
+                      
+                      {/* Calendar Grid */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {/* Padding days */}
+                        {Array.from({ length: calendarDays.paddingDays }).map((_, i) => (
+                          <div key={`pad-${i}`} className="h-9" />
+                        ))}
+                        
+                        {/* Calendar days */}
+                        {calendarDays.days.map((day) => {
+                          const dayStr = format(day, 'yyyy-MM-dd')
+                          const fileForDate = getAvailableDates.get(dayStr)
+                          const hasData = !!fileForDate
+                          const isSelected = selectedFile && fileForDate?.filename === selectedFile
+                          const isToday = isSameDay(day, new Date())
+                          
+                          // Check if date is in the past or today
+                          const now = new Date()
+                          const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate())
+                          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                          const isSelectable = dayStart <= todayStart
+                          
+                          return (
+                            <button
+                              key={dayStr}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (isSelectable) {
+                                  handleDateSelect(day)
+                                }
+                              }}
+                              disabled={!isSelectable}
+                              className={`
+                                h-9 w-9 text-sm rounded-md transition-colors
+                                ${isSelected 
+                                  ? 'bg-teal-600 text-white font-semibold hover:bg-teal-700' 
+                                  : hasData && isSelectable
+                                    ? 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 cursor-pointer active:bg-teal-200'
+                                    : isSelectable
+                                      ? 'text-gray-600 hover:bg-gray-100 cursor-pointer active:bg-gray-200'
+                                      : 'text-gray-300 cursor-not-allowed opacity-50'
+                                }
+                                ${isToday && !isSelected ? 'ring-2 ring-teal-500' : ''}
+                              `}
+                              title={isSelectable 
+                                ? (hasData ? `Data available - ${format(day, 'dd-MM-yyyy')}` : `No data - ${format(day, 'dd-MM-yyyy')}`)
+                                : 'Future dates are not available'
+                              }
+                            >
+                              {format(day, 'd')}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      
+                      {/* Legend */}
+                      <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-center gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-teal-50 border border-teal-200"></div>
+                          <span className="text-gray-600">Data available</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-gray-100"></div>
+                          <span className="text-gray-600">No data</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

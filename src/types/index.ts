@@ -853,6 +853,13 @@ export interface ReturnsRecord {
   sign_pattern_6_months: string | null
   sign_pattern_9_months: string | null
   sign_pattern_1_year: string | null
+  
+  // 🏢 Company Information
+  sector: string | null
+  industry: string | null
+  market_cap_crore: number | null
+  roe_percent: number | null
+  roce_percent: number | null
 }
 
 export interface ReturnsFileDataResponse {

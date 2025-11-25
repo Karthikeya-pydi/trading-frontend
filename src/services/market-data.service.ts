@@ -104,6 +104,9 @@ export class MarketDataService {
     try {
       console.log('📈 MarketDataService - Fetching returns file data:', filename, options)
       
+      // URL encode the filename to handle special characters
+      const encodedFilename = encodeURIComponent(filename)
+      
       // Build query parameters
       const queryParams = new URLSearchParams()
       if (options?.sortBy) queryParams.append('sort_by', options.sortBy)
@@ -111,7 +114,9 @@ export class MarketDataService {
       if (options?.limit) queryParams.append('limit', options.limit.toString())
       
       const queryString = queryParams.toString()
-      const endpoint = `/api/returns/file/${filename}${queryString ? `?${queryString}` : ''}`
+      const endpoint = `/api/returns/file/${encodedFilename}${queryString ? `?${queryString}` : ''}`
+      
+      console.log('📈 MarketDataService - API endpoint:', endpoint)
       
       const response = await this.apiCall<ReturnsFileDataResponse>(endpoint)
       console.log('✅ MarketDataService - Returns file data response:', response)
