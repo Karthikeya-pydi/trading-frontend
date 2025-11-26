@@ -262,10 +262,10 @@ export default function TradeHistory() {
               <div className="text-sm text-red-600">Sell Trades</div>
             </CardContent>
           </Card>
-          <Card className="bg-purple-50 border-purple-200">
+          <Card className="bg-teal-50 border-teal-200">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">{totalVolume.toLocaleString()}</div>
-              <div className="text-sm text-purple-600">Total Volume</div>
+              <div className="text-2xl font-bold text-teal-600">{totalVolume.toLocaleString()}</div>
+              <div className="text-sm text-teal-600">Total Volume</div>
             </CardContent>
           </Card>
         </div>

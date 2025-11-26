@@ -113,9 +113,10 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 w-full h-20 transition-all duration-150">
-      {/* Backdrop blur and gradient overlay */}
-      <div className={`absolute inset-0 bg-white backdrop-blur-md border-b border-gray-200 transition-all duration-150 ${scrolled ? 'shadow-md' : 'shadow-sm'}`}></div>
+    <header className="fixed top-0 left-0 right-0 z-40 w-full h-20 transition-all duration-300">
+      {/* Premium Glassmorphism Header */}
+      <div className={`absolute inset-0 glass-card-light transition-all duration-300 ${scrolled ? 'shadow-premium' : 'shadow-sm'}`}></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-teal-50/50 via-white/50 to-teal-50/50"></div>
       
       {/* Header content with exact spacing and animations */}
       <div className="relative flex items-center justify-between h-full px-4 md:px-6">
@@ -131,13 +132,14 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
             <Menu className="h-5 w-5 text-gray-700" />
           </Button>
           
-          <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-white" />
+          <div className="flex items-center space-x-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 shadow-lg flex items-center justify-center transform hover:scale-110 transition-transform duration-300">
+              <TrendingUp className="h-6 w-6 text-white" />
             </div>
             <span className="text-lg sm:text-xl font-bold text-gray-900 hidden xs:inline">IIFL Trading</span>
           </div>
-          <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 text-xs hidden sm:inline-flex">
+          <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 text-xs hidden sm:inline-flex px-3 py-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
             Connected
           </Badge>
         </div>
@@ -181,7 +183,7 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
             disabled={isLoading}
             variant="outline"
             size="sm"
-            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 hidden sm:flex"
+            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 hidden sm:flex btn-premium"
           >
             <RefreshCw className={`h-4 w-4 sm:mr-2 ${isLoading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>
@@ -193,7 +195,7 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
             disabled={isLoading}
             variant="outline"
             size="sm"
-            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 sm:hidden p-2"
+            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 sm:hidden p-2 btn-premium"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
@@ -203,7 +205,7 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
             <Button 
               variant="outline" 
               size="sm" 
-              className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 sm:px-4 px-2"
+              className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 sm:px-4 px-2 btn-premium"
               onClick={() => setShowAccountDropdown(!showAccountDropdown)}
             >
               <User className="h-4 w-4 sm:mr-2" />
@@ -212,16 +214,16 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
             </Button>
             
             {showAccountDropdown && (
-              <div className="absolute right-0 top-full mt-1 w-64 sm:w-64 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="absolute right-0 top-full mt-2 w-64 sm:w-64 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-premium z-50 animate-fade-in">
                 {/* Balance Display Section */}
                 {balanceData && (
                   <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <Wallet className="h-4 w-4 text-blue-500" />
+                        <Wallet className="h-4 w-4 text-teal-500" />
                         <span className="text-sm font-medium text-gray-900">Balance</span>
                       </div>
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                      <Badge variant="outline" className="text-xs bg-teal-50 text-teal-700 border-teal-200">
                         {balanceData.accountId}
                       </Badge>
                     </div>
@@ -260,7 +262,7 @@ export function Header({ toggleSidebar, onRefresh, isLoading = false }: HeaderPr
                       localStorage.removeItem('refresh_token')
                       window.location.href = '/'
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center rounded-lg transition-all duration-200"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout

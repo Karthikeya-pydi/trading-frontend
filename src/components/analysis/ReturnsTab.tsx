@@ -1525,7 +1525,7 @@ export default function ReturnsTab() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Filter className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900">
+                    <span className="text-sm font-medium text-teal-900">
                       Active filter: <span className="font-semibold">{filterQuery}</span>
                     </span>
                   </div>

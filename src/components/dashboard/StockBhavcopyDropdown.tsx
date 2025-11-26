@@ -159,7 +159,7 @@ export function StockBhavcopyDropdown({
                     <p className="text-xs text-gray-600">Volume</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
+                    <div className="text-2xl font-bold text-teal-600">
                       {formatPercentage(bhavcopyData.DELIV_PER)}
                     </div>
                     <p className="text-xs text-gray-600">Delivery %</p>
@@ -237,8 +237,8 @@ export function StockBhavcopyDropdown({
                 <Card className="bg-white shadow-sm border-0 ring-1 ring-gray-200 hover:ring-blue-300 transition-all duration-200">
                   <CardContent className="p-5">
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <Package className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 bg-teal-100 rounded-lg">
+                        <Package className="h-5 w-5 text-teal-600" />
                       </div>
                       <h4 className="font-semibold text-gray-800">Delivery Info</h4>
                     </div>

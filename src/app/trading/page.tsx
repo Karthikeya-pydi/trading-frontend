@@ -32,7 +32,7 @@ export default function TradingPage() {
               <Badge variant="outline" className="text-green-600 border-green-200 text-xs sm:text-sm">
                 Live Market
               </Badge>
-              <Badge variant="outline" className="text-blue-600 border-blue-200 text-xs sm:text-sm">
+              <Badge variant="outline" className="text-teal-600 border-teal-200 text-xs sm:text-sm">
                 IIFL Connected
               </Badge>
             </div>
@@ -54,7 +54,7 @@ export default function TradingPage() {
 
         {/* Selected Stock Info */}
         {selectedStock && (
-          <Card className="border-green-200 bg-green-50 mb-6">
+          <Card className="border-green-200 bg-green-50 mb-6 shadow-premium">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <span className="text-base sm:text-lg">{selectedStock.symbol} - {selectedStock.name}</span>
@@ -73,10 +73,10 @@ export default function TradingPage() {
 
         {/* Main Trading Interface */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="trade">Trade</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="trades">History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-gray-100 border border-gray-200 shadow-premium rounded-xl p-1">
+            <TabsTrigger value="trade" className="data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-md data-[state=active]:scale-105 text-gray-700 transition-all duration-300">Trade</TabsTrigger>
+            <TabsTrigger value="orders" className="data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-md data-[state=active]:scale-105 text-gray-700 transition-all duration-300">Orders</TabsTrigger>
+            <TabsTrigger value="trades" className="data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-md data-[state=active]:scale-105 text-gray-700 transition-all duration-300">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="trade" className="space-y-4">

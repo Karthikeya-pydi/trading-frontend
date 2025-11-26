@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
+import { AppProviders } from "@/components/providers/AppProviders"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -32,9 +33,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        <div className="min-h-screen bg-white overflow-x-hidden">
-          {children}
-        </div>
+        <AppProviders>
+          <div className="min-h-screen bg-white overflow-x-hidden">
+            {children}
+          </div>
+        </AppProviders>
       </body>
     </html>
   )

@@ -63,15 +63,15 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                     toggleSidebar()
                   }
                 }}
-                className={`group flex items-center justify-between rounded-lg px-3 sm:px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                className={`group flex items-center justify-between rounded-xl px-3 sm:px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
                   isActive
-                    ? "bg-gradient-to-r from-teal-600/90 to-teal-500/90 text-white shadow-md"
-                    : "text-gray-700 hover:bg-teal-50 hover:text-teal-600"
+                    ? "bg-gradient-to-r from-teal-600/90 to-teal-500/90 text-white shadow-md transform scale-105"
+                    : "text-gray-700 hover:bg-teal-50 hover:text-teal-600 hover:translate-x-1"
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <Icon className={`h-4 w-4 ${
-                    isActive ? "text-white" : "text-gray-500 group-hover:text-teal-600"
+                  <Icon className={`h-4 w-4 transition-transform duration-200 ${
+                    isActive ? "text-white" : "text-gray-500 group-hover:text-teal-600 group-hover:scale-110"
                   }`} />
                   <span className="text-sm sm:text-base">{item.title}</span>
                 </div>

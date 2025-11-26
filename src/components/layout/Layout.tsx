@@ -50,15 +50,22 @@ export function Layout({ children, title, onRefresh, isLoading = false }: Layout
   }
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-light-bg overflow-x-hidden relative">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-teal-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-teal-100/30 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" style={{ animationDelay: '2s' }}></div>
+      </div>
+      
       <Header 
         toggleSidebar={toggleSidebar}
         onRefresh={onRefresh}
         isLoading={isLoading}
       />
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      <div className={`transition-all duration-300 lg:ml-64`}>
-        <main className="px-3 sm:px-4 md:px-6 pb-12 pt-24 bg-white min-h-[calc(100vh-5rem)]">
+      <div className={`transition-all duration-300 lg:ml-64 relative z-10`}>
+        <main className="px-3 sm:px-4 md:px-6 pb-12 pt-24 min-h-[calc(100vh-5rem)]">
           {children}
         </main>
       </div>

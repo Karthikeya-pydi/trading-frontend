@@ -25,9 +25,10 @@ import { API_BASE_URL, API_ENDPOINTS } from "@/constants"
 import { TradingService } from "@/services/trading.service"
 import { PortfolioTab } from "@/components/dashboard/PortfolioTab"
 import { PositionsTab } from "@/components/dashboard/PositionsTab"
-
 import { Layout } from "@/components/layout/Layout"
-
+import { usePortfolio } from "@/hooks/usePortfolio"
+import { useTrading } from "@/hooks/useTrading"
+import { useAuth } from "@/hooks/useAuth"
 import { 
   Position, 
   Trade, 
@@ -86,23 +87,23 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(new Date())
   const [activeTab, setActiveTab] = useState("holdings")
-
   const [mounted, setMounted] = useState(false)
   
-  // Data states
-  const [positions, setPositions] = useState<Position[]>([])
-  const [trades, setTrades] = useState<Trade[]>([])
+  // Use contexts for data management
+  const { user, isAuthenticated } = useAuth()
+  const { positions, trades, fetchPositions, fetchTrades, loading: tradingLoading } = useTrading()
+  const {
+    portfolioSummary,
+    pnlData,
+    holdings,
+    holdingsSummary,
+    dailyPnL,
+    riskMetrics,
+    loading: portfolioLoading,
+    refreshAll: refreshPortfolio,
+  } = usePortfolio()
   
-  // Portfolio states
-  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null)
-  const [pnlData, setPnlData] = useState<PnLData | null>(null)
-  const [holdings, setHoldings] = useState<Holding[] | null>(null)
-  const [holdingsSummary, setHoldingsSummary] = useState<HoldingsSummary | null>(null)
-  const [dailyPnL, setDailyPnL] = useState<DailyPnL | null>(null)
-  const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null)
-  const [portfolioLoading, setPortfolioLoading] = useState(false)
-  
-  // Stock scores state
+  // Stock scores state (still local as it's computed)
   const [stockScores, setStockScores] = useState<Record<string, number | null>>({})
   
 
@@ -216,66 +217,16 @@ export default function DashboardPage() {
   }
 
   const loadPortfolioData = async () => {
-    setPortfolioLoading(true)
     try {
       console.log('🚀 Dashboard - Starting portfolio data load...')
       
-      // Prioritize holdings summary API call
-      const [
-        holdingsSummaryData,
-        portfolioData,
-        pnlData,
-        holdingsData,
-        dailyPnLData,
-        riskMetricsData
-      ] = await Promise.all([
-        TradingService.getHoldingsSummary().catch((err) => {
-          console.error('❌ Dashboard - Holdings summary error:', err)
-          return null
-        }),
-        TradingService.getPortfolioSummary().catch((err) => {
-          console.error('❌ Dashboard - Portfolio summary error:', err)
-          return null
-        }),
-        TradingService.getPnLData().catch((err) => {
-          console.error('❌ Dashboard - PnL data error:', err)
-          return null
-        }),
-        TradingService.getHoldings().catch((err) => {
-          console.error('❌ Dashboard - Holdings error:', err)
-          return []
-        }),
-        TradingService.getDailyPnL().catch((err) => {
-          console.error('❌ Dashboard - Daily PnL error:', err)
-          return null
-        }),
-        TradingService.getRiskMetrics().catch((err) => {
-          console.error('❌ Dashboard - Risk metrics error:', err)
-          return null
-        })
-      ])
-      
-      console.log('✅ Dashboard - Portfolio data loaded:')
-      console.log('  - Holdings Summary (Primary):', holdingsSummaryData)
-      console.log('  - Portfolio Summary:', portfolioData)
-      console.log('  - PnL Data:', pnlData)
-      console.log('  - Holdings (Fallback):', holdingsData)
-      console.log('  - Daily PnL:', dailyPnLData)
-      console.log('  - Risk Metrics:', riskMetricsData)
-      
-      setHoldingsSummary(holdingsSummaryData)
-      setPortfolioSummary(portfolioData)
-      setPnlData(pnlData)
-      setHoldings(holdingsData)
-      setDailyPnL(dailyPnLData)
-      setRiskMetrics(riskMetricsData)
+      // Use context methods to fetch all portfolio data
+      await refreshPortfolio()
 
       // Fetch stock scores for holdings
-      await loadStockScores(holdingsSummaryData, holdingsData)
+      await loadStockScores(holdingsSummary, holdings)
     } catch (_error) {
       console.error('❌ Dashboard - Error loading portfolio data:', _error)
-    } finally {
-      setPortfolioLoading(false)
     }
   }
 
@@ -321,49 +272,23 @@ export default function DashboardPage() {
   }
 
   const updatePortfolioPrices = async () => {
-    setPortfolioLoading(true)
     try {
-      await TradingService.updatePortfolioPrices()
+      const { PortfolioService } = await import('@/services/portfolio/portfolio.service')
+      await PortfolioService.updatePortfolioPrices()
       showAlert('success', 'Portfolio prices updated successfully!')
-      loadPortfolioData()
+      await refreshPortfolio()
     } catch (_error) {
       showAlert('error', 'Failed to update portfolio prices')
-    } finally {
-      setPortfolioLoading(false)
     }
   }
 
+  // Positions and trades are now managed by TradingContext
   const loadPositions = async () => {
-    try {
-      console.log('🔍 Dashboard - Loading positions from:', API_ENDPOINTS.POSITIONS)
-      const data = await apiCall(API_ENDPOINTS.POSITIONS)
-      console.log('✅ Dashboard - Positions API response:', data)
-      
-      // Handle both array response and object with positions property
-      const positionsData = Array.isArray(data) ? data : (data.positions || [])
-      console.log('✅ Dashboard - Processed positions data:', positionsData)
-      
-      setPositions(positionsData)
-    } catch (_error) {
-      console.error('❌ Dashboard - Error loading positions:', _error)
-      setPositions([])
-    }
+    await fetchPositions()
   }
 
   const loadTrades = async () => {
-    try {
-      console.log('🔍 Dashboard - Loading trades from:', API_ENDPOINTS.TRADES)
-      const data = await apiCall(API_ENDPOINTS.TRADES)
-      console.log('✅ Dashboard - Trades API response:', data)
-      
-      const tradesData = Array.isArray(data) ? data : (data.trades || [])
-      console.log('✅ Dashboard - Processed trades data:', tradesData)
-      
-      setTrades(tradesData)
-    } catch (_error) {
-      console.error('❌ Dashboard - Error loading trades:', _error)
-      setTrades([])
-    }
+    await fetchTrades()
   }
 
 
@@ -388,7 +313,7 @@ export default function DashboardPage() {
   const refreshPositionsData = async () => {
     try {
       console.log('🔍 Dashboard - Refreshing positions data...')
-      await Promise.all([loadPositions(), loadTrades()])
+      await Promise.all([fetchPositions(), fetchTrades()])
       showAlert('success', 'Positions data refreshed successfully!')
     } catch (_error) {
       console.error('❌ Dashboard - Error refreshing positions data:', _error)
@@ -476,7 +401,7 @@ export default function DashboardPage() {
       case 'FILLED':
         return 'bg-green-50 text-green-700 border-green-200'
       case 'PARTIALLY_FILLED':
-        return 'bg-blue-50 text-blue-700 border-blue-200'
+        return 'bg-teal-50 text-teal-700 border-teal-200'
       case 'CANCELLED':
         return 'bg-red-50 text-red-700 border-red-200'
       case 'REJECTED':
@@ -507,10 +432,10 @@ export default function DashboardPage() {
       {/* Alerts */}
       {showError && error && (
         <div className="mb-6 animate-fade-in">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 shadow-sm">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 shadow-premium">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
+                <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center shadow-lg">
                   <span className="text-white text-sm font-bold">!</span>
                 </div>
                 <span className="text-red-700 font-medium">{error}</span>
@@ -528,10 +453,10 @@ export default function DashboardPage() {
       
       {showSuccess && success && (
         <div className="mb-6 animate-fade-in">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 shadow-premium">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
+                <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
                   <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -551,9 +476,9 @@ export default function DashboardPage() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl shadow-sm">
-          <TabsTrigger value="holdings" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-600 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-md">Holdings</TabsTrigger>
-          <TabsTrigger value="positions" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-600 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-md">Positions</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl shadow-premium border border-gray-200">
+          <TabsTrigger value="holdings" className="data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-md data-[state=active]:scale-105 text-gray-700 transition-all duration-300">Holdings</TabsTrigger>
+          <TabsTrigger value="positions" className="data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-md data-[state=active]:scale-105 text-gray-700 transition-all duration-300">Positions</TabsTrigger>
         </TabsList>
 
         {/* Holdings Tab */}
