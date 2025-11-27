@@ -21,6 +21,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
   Award,
   Building2,
   Download,
@@ -137,6 +138,8 @@ export default function ReturnsTab() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const filterPopoverRef = useRef<HTMLDivElement>(null)
   const filterButtonRef = useRef<HTMLDivElement>(null)
+  const tableScrollRef = useRef<HTMLDivElement>(null)
+  const topScrollRef = useRef<HTMLDivElement>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(50)
   const [sortField, setSortField] = useState<keyof StockReturns>("symbol")
@@ -160,6 +163,15 @@ export default function ReturnsTab() {
   // Nifty indices pagination
   const [niftyCurrentPage, setNiftyCurrentPage] = useState(1)
   const [niftyItemsPerPage] = useState(20)
+
+  // Sign Pattern filters state - tracks which patterns are selected for each period
+  const [signPatternFilters, setSignPatternFilters] = useState<Record<string, string[]>>({})
+  
+  // State to track which pattern dropdown is open
+  const [openPatternDropdown, setOpenPatternDropdown] = useState<string | null>(null)
+  
+  // Available pattern options
+  const patternOptions = ['-,-', '-,+', '+,-', '+,+']
 
   // Available time periods
   const timePeriods = [
@@ -676,6 +688,30 @@ export default function ReturnsTab() {
     }
   }, [])
 
+  // Get sign pattern value for selected period (needed before filteredAndSortedData)
+  const getSignPatternValue = (record: StockReturns, period: string) => {
+    switch (period) {
+      case "1_week": return record.sign_pattern_1_week
+      case "1_month": return record.sign_pattern_1_month
+      case "3_months": return record.sign_pattern_3_months
+      case "6_months": return record.sign_pattern_6_months
+      case "9_months": return record.sign_pattern_9_months
+      case "1_year": return record.sign_pattern_1_year
+      default: return null
+    }
+  }
+
+  // Normalize pattern string for comparison (removes all spaces, trims, handles various formats)
+  const normalizePattern = (pattern: string | null | undefined): string | null => {
+    if (!pattern) return null
+    // Remove all whitespace and normalize
+    let normalized = String(pattern).trim().replace(/\s+/g, '')
+    // Handle cases where pattern might have different separators (e.g., "- , -" or "-,-" or "-, -")
+    // Replace any comma-space or space-comma combinations with just comma
+    normalized = normalized.replace(/,\s*/g, ',').replace(/\s*,/g, ',')
+    return normalized
+  }
+
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
     if (!returnsData?.data) return []
@@ -743,6 +779,23 @@ export default function ReturnsTab() {
       }
     }
 
+    // Apply sign pattern filters
+    Object.entries(signPatternFilters).forEach(([period, patterns]) => {
+      if (patterns.length > 0) {
+        filtered = filtered.filter(record => {
+          const patternValue = getSignPatternValue(record, period)
+          const normalizedPattern = normalizePattern(patternValue)
+          // If pattern is null/undefined, exclude from results
+          if (!normalizedPattern) return false
+          // Check if any of the selected patterns match (normalize filter patterns too)
+          return patterns.some(filterPattern => {
+            const normalizedFilter = normalizePattern(filterPattern)
+            return normalizedPattern === normalizedFilter
+          })
+        })
+      }
+    })
+
     // Apply sorting
     filtered.sort((a, b) => {
       const aValue = a[sortField]
@@ -762,7 +815,7 @@ export default function ReturnsTab() {
     })
 
     return filtered
-  }, [returnsData, selectedIndex, niftyIndexData, searchQuery, filterQuery, sortField, sortDirection, parseFilterQuery])
+  }, [returnsData, selectedIndex, niftyIndexData, searchQuery, filterQuery, signPatternFilters, sortField, sortDirection, parseFilterQuery])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
@@ -798,6 +851,31 @@ export default function ReturnsTab() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
 
+  // Handle sign pattern filter toggle
+  const toggleSignPatternFilter = (period: string, pattern: string) => {
+    setSignPatternFilters(prev => {
+      const currentPatterns = prev[period] || []
+      const newPatterns = currentPatterns.includes(pattern)
+        ? currentPatterns.filter(p => p !== pattern)
+        : [...currentPatterns, pattern]
+      
+      const updated = { ...prev }
+      if (newPatterns.length > 0) {
+        updated[period] = newPatterns
+      } else {
+        delete updated[period]
+      }
+      return updated
+    })
+    setCurrentPage(1)
+  }
+
+  // Clear all sign pattern filters
+  const clearSignPatternFilters = () => {
+    setSignPatternFilters({})
+    setCurrentPage(1)
+  }
+
   // Handle Nifty indices page change
   const goToNiftyPage = (page: number) => {
     setNiftyCurrentPage(Math.max(1, Math.min(page, niftyTotalPages)))
@@ -827,19 +905,6 @@ export default function ReturnsTab() {
       case "6_months": return record.score_change_6_months
       case "9_months": return record.score_change_9_months
       case "1_year": return record.score_change_1_year
-      default: return null
-    }
-  }
-
-  // Get sign pattern value for selected period
-  const getSignPatternValue = (record: StockReturns, period: string) => {
-    switch (period) {
-      case "1_week": return record.sign_pattern_1_week
-      case "1_month": return record.sign_pattern_1_month
-      case "3_months": return record.sign_pattern_3_months
-      case "6_months": return record.sign_pattern_6_months
-      case "9_months": return record.sign_pattern_9_months
-      case "1_year": return record.sign_pattern_1_year
       default: return null
     }
   }
@@ -1080,8 +1145,100 @@ export default function ReturnsTab() {
     }
   }, [isFilterOpen])
 
+  // Close pattern dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openPatternDropdown) {
+        const target = event.target as Node
+        const dropdownElements = document.querySelectorAll('[data-pattern-dropdown]')
+        let clickedInside = false
+        
+        dropdownElements.forEach(el => {
+          if (el.contains(target)) {
+            clickedInside = true
+          }
+        })
+        
+        if (!clickedInside) {
+          setOpenPatternDropdown(null)
+        }
+      }
+    }
+
+    if (openPatternDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [openPatternDropdown])
+
+  // Sync top scrollbar width with table width
+  useEffect(() => {
+    const syncScrollbarWidth = () => {
+      if (tableScrollRef.current && topScrollRef.current) {
+        const tableContainer = tableScrollRef.current
+        const topScrollbar = topScrollRef.current
+        const spacer = topScrollbar.querySelector('#top-scroll-spacer') as HTMLElement
+        
+        if (spacer) {
+          // Set spacer width to match table's scrollWidth
+          spacer.style.width = `${tableContainer.scrollWidth}px`
+        }
+      }
+    }
+
+    // Sync on mount and when data changes
+    const timeoutId = setTimeout(() => {
+      syncScrollbarWidth()
+    }, 100)
+    
+    // Also sync on window resize
+    window.addEventListener('resize', syncScrollbarWidth)
+    
+    // Use ResizeObserver to watch for table size changes
+    let resizeObserver: ResizeObserver | null = null
+    if (tableScrollRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        syncScrollbarWidth()
+      })
+      resizeObserver.observe(tableScrollRef.current)
+    }
+    
+    return () => {
+      clearTimeout(timeoutId)
+      window.removeEventListener('resize', syncScrollbarWidth)
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
+    }
+  }, [filteredAndSortedData, returnsData])
+
   return (
-    <div className="space-y-6">
+    <>
+      <style>{`
+        @keyframes dropdownSlide {
+          from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        @keyframes checkmarkZoom {
+          from {
+            opacity: 0;
+            transform: scale(0);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div className="flex-1">
@@ -1519,31 +1676,63 @@ export default function ReturnsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Active Filter Query Indicator */}
-            {filterQuery && !filterError && (
+            {/* Active Filter Indicators */}
+            {(filterQuery && !filterError) || Object.keys(signPatternFilters).length > 0 ? (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Filter className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-teal-900">
-                      Active filter: <span className="font-semibold">{filterQuery}</span>
-                    </span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setFilterQuery("")
-                      setFilterError("")
-                      setCurrentPage(1)
-                    }}
-                    className="text-blue-600 border-blue-300 hover:bg-blue-100"
-                  >
-                    Clear Filter
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  {filterQuery && !filterError && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Filter className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-teal-900">
+                          Active filter: <span className="font-semibold">{filterQuery}</span>
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setFilterQuery("")
+                          setFilterError("")
+                          setCurrentPage(1)
+                        }}
+                        className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                      >
+                        Clear Filter
+                      </Button>
+                    </div>
+                  )}
+                  {Object.keys(signPatternFilters).length > 0 && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 flex-wrap gap-2">
+                        <Filter className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-teal-900">
+                          Pattern filters:
+                        </span>
+                        {Object.entries(signPatternFilters).map(([period, patterns]) => {
+                          const periodLabel = signPatternPeriods.find(p => p.key === period)?.label || period
+                          return (
+                            <Badge key={period} variant="secondary" className="bg-blue-100 text-blue-700">
+                              {periodLabel}: {patterns.join(', ')}
+                            </Badge>
+                          )
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          clearSignPatternFilters()
+                        }}
+                        className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                      >
+                        Clear Patterns
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            ) : null}
              {/* No Results Message */}
              {filteredAndSortedData.length === 0 && selectedIndex && (
                <div className="text-center py-8">
@@ -1581,37 +1770,78 @@ export default function ReturnsTab() {
 
              {/* Data Table */}
              {filteredAndSortedData.length > 0 && (
-               <div className="overflow-x-auto">
+               <div className="relative">
+                 {/* Top Scrollbar */}
+                 <div 
+                   ref={topScrollRef}
+                   className="overflow-x-auto overflow-y-hidden mb-1"
+                   style={{ 
+                     height: '17px',
+                     scrollbarWidth: 'thin',
+                     msOverflowStyle: 'none',
+                     WebkitOverflowScrolling: 'touch'
+                   }}
+                   onScroll={(e) => {
+                     if (tableScrollRef.current && topScrollRef.current) {
+                       tableScrollRef.current.scrollLeft = e.currentTarget.scrollLeft
+                     }
+                   }}
+                 >
+                   <div 
+                     id="top-scroll-spacer" 
+                     style={{ 
+                       height: '1px',
+                       minWidth: '100%'
+                     }} 
+                   />
+                 </div>
+                 {/* Table Container */}
+                 <div 
+                   ref={tableScrollRef}
+                   className="overflow-x-auto"
+                   style={{
+                     scrollbarWidth: 'thin',
+                     msOverflowStyle: 'none'
+                   }}
+                   onScroll={(e) => {
+                     if (topScrollRef.current && tableScrollRef.current) {
+                       topScrollRef.current.scrollLeft = e.currentTarget.scrollLeft
+                     }
+                   }}
+                 >
               <table className="w-full border-collapse border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50">
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Symbol
+                    </th>
+                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Fincode
+                    </th>
                     <th 
                       className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("symbol")}
+                      onClick={() => handleSort("latest_close")}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Symbol</span>
-                        {sortField === "symbol" && (
+                        <span>Latest Close</span>
+                        {sortField === "latest_close" && (
                           <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                         )}
                       </div>
                     </th>
                     <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fincode
+                      Sector
                     </th>
                     <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Latest Close
-                    </th>
-                    <th className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Volume
+                      Industry
                     </th>
                     <th 
                       className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("turnover")}
+                      onClick={() => handleSort("market_cap_crore")}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Turnover</span>
-                        {sortField === "turnover" && (
+                        <span>Market Cap (Cr)</span>
+                        {sortField === "market_cap_crore" && (
                           <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                         )}
                       </div>
@@ -1631,10 +1861,14 @@ export default function ReturnsTab() {
                     {historicalScorePeriods.map((period) => (
                       <th 
                         key={`historical-score-header-${period.key}`}
-                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(`raw_score_${period.key}` as keyof StockReturns)}
                       >
                         <div className="flex items-center space-x-1">
                           <span>{period.label}</span>
+                          {sortField === `raw_score_${period.key}` && (
+                            <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                          )}
                         </div>
                       </th>
                     ))}
@@ -1656,58 +1890,120 @@ export default function ReturnsTab() {
                     {scoreChangePeriods.map((period) => (
                       <th 
                         key={`score-change-header-${period.key}`}
-                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(`score_change_${period.key}` as keyof StockReturns)}
                       >
                         <div className="flex items-center space-x-1">
                           <span>{period.label}</span>
+                          {sortField === `score_change_${period.key}` && (
+                            <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                          )}
                         </div>
                       </th>
                     ))}
                     {/* Sign Pattern Columns */}
-                    {signPatternPeriods.map((period) => (
-                      <th 
-                        key={`sign-pattern-header-${period.key}`}
-                        className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>{period.label}</span>
-                        </div>
-                      </th>
-                    ))}
-                    {/* Company Information Columns */}
-                    <th 
-                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("sector")}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Sector</span>
-                        {sortField === "sector" && (
-                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("industry")}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Industry</span>
-                        {sortField === "industry" && (
-                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("market_cap_crore")}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Market Cap (Cr)</span>
-                        {sortField === "market_cap_crore" && (
-                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
-                        )}
-                      </div>
-                    </th>
+                    {signPatternPeriods.map((period) => {
+                      const activeFilters = signPatternFilters[period.key] || []
+                      const isOpen = openPatternDropdown === period.key
+                      return (
+                        <th 
+                          key={`sign-pattern-header-${period.key}`}
+                          className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative"
+                          data-pattern-dropdown
+                        >
+                          <div className="flex flex-col gap-1">
+                            <div className="relative">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenPatternDropdown(isOpen ? null : period.key)
+                                }}
+                                className="flex items-center space-x-1 hover:bg-gray-50 rounded px-1 py-0.5 transition-all duration-200 ease-in-out w-full text-left group"
+                                data-pattern-dropdown
+                              >
+                                <span className="transition-colors duration-200">{period.label}</span>
+                                {activeFilters.length > 0 && (
+                                  <Badge variant="secondary" className="h-4 px-1 text-xs bg-blue-100 text-blue-700 transition-all duration-200 animate-in fade-in slide-in-from-top-1">
+                                    {activeFilters.length}
+                                  </Badge>
+                                )}
+                                <ChevronDown className={`h-3 w-3 transition-all duration-300 ease-in-out ${isOpen ? 'rotate-180' : 'rotate-0'} text-gray-500 group-hover:text-gray-700`} />
+                              </button>
+                              
+                              {/* Dropdown Menu */}
+                              {isOpen && (
+                                <div 
+                                  className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-md shadow-xl min-w-[120px] overflow-hidden backdrop-blur-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                  data-pattern-dropdown
+                                  style={{
+                                    animation: 'dropdownSlide 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+                                  }}
+                                >
+                                  <div className="p-1">
+                                    {patternOptions.map((pattern) => {
+                                      const isActive = activeFilters.includes(pattern)
+                                      return (
+                                        <button
+                                          key={`filter-${period.key}-${pattern}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            toggleSignPatternFilter(period.key, pattern)
+                                          }}
+                                          className={`w-full text-left px-2 py-1.5 text-xs rounded transition-all duration-200 ease-in-out flex items-center space-x-2 ${
+                                            isActive 
+                                              ? 'bg-blue-50 text-blue-700 font-medium hover:bg-blue-100' 
+                                              : 'text-gray-700 hover:bg-gray-50'
+                                          }`}
+                                        >
+                                          <span className={`inline-block w-3 h-3 border rounded transition-all duration-200 ease-in-out flex items-center justify-center ${
+                                            isActive 
+                                              ? 'bg-blue-600 border-blue-700 scale-110' 
+                                              : 'border-gray-400 hover:border-gray-500'
+                                          }`}>
+                                            {isActive && (
+                                              <svg 
+                                                className="w-3 h-3 text-white" 
+                                                fill="currentColor" 
+                                                viewBox="0 0 20 20"
+                                                style={{
+                                                  animation: 'checkmarkZoom 0.15s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards'
+                                                }}
+                                              >
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                              </svg>
+                                            )}
+                                          </span>
+                                          <span className="transition-colors duration-200">{pattern}</span>
+                                        </button>
+                                      )
+                                    })}
+                                    {activeFilters.length > 0 && (
+                                      <div className="border-t border-gray-200 mt-1 pt-1">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSignPatternFilters(prev => {
+                                              const updated = { ...prev }
+                                              delete updated[period.key]
+                                              return updated
+                                            })
+                                            setCurrentPage(1)
+                                          }}
+                                          className="w-full text-left px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded transition-all duration-200 ease-in-out hover:scale-[1.02]"
+                                        >
+                                          Clear filters
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </th>
+                      )
+                    })}
                     <th 
                       className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("roe_percent")}
@@ -1730,6 +2026,29 @@ export default function ReturnsTab() {
                         )}
                       </div>
                     </th>
+                    {/* Volume and Turnover Columns */}
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("latest_volume")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Volume</span>
+                        {sortField === "latest_volume" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("turnover")}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Turnover</span>
+                        {sortField === "turnover" && (
+                          <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                                  <tbody className="bg-white divide-y divide-gray-200">
@@ -1745,10 +2064,13 @@ export default function ReturnsTab() {
                         ₹{record.latest_close.toFixed(2)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {record.latest_volume.toLocaleString()}
+                        {record.sector || '-'}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {formatTurnover(record.turnover)}
+                        {record.industry || '-'}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatMarketCap(record.market_cap_crore)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {formatScore(record.raw_score)}
@@ -1797,27 +2119,25 @@ export default function ReturnsTab() {
                           </td>
                         )
                       })}
-                      {/* Company Information Data Cells */}
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {record.sector || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {record.industry || '-'}
-                      </td>
-                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        {formatMarketCap(record.market_cap_crore)}
-                      </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {formatPercentage(record.roe_percent)}
                       </td>
                       <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
                         {formatPercentage(record.roce_percent)}
                       </td>
+                      {/* Volume and Turnover Data Cells */}
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {record.latest_volume.toLocaleString()}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">
+                        {formatTurnover(record.turnover)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                              </table>
-             </div>
+                 </div>
+               </div>
              )}
 
              {/* Pagination */}
@@ -1932,6 +2252,7 @@ export default function ReturnsTab() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </>
   )
 }
