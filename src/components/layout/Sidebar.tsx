@@ -12,7 +12,8 @@ import {
   BarChart3,
   Search,
   Filter,
-  Settings
+  Settings,
+  Target
 } from "lucide-react"
 
 interface SidebarProps {
@@ -25,6 +26,7 @@ const navItems = [
   { title: "Stocks", href: "/stocks", icon: Search },
   { title: "Watchlist", href: "/wishlist", icon: Eye },
   { title: "Trading", href: "/trading", icon: TrendingUp },
+  { title: "Strategy Builder", href: "/strategy-builder", icon: Target },
   { title: "Analysis", href: "/analysis", icon: BarChart3 },
   { title: "Settings", href: "/settings", icon: Settings },
 ]

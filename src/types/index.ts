@@ -30,3 +30,6 @@ export * from './screening'
 
 // Common utility types
 export * from './common'
+
+// Strategy builder types
+export * from './strategy-builder'

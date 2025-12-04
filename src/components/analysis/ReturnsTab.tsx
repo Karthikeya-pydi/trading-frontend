@@ -1652,9 +1652,9 @@ export default function ReturnsTab() {
                       (filtered from {returnsData.data.length} total stocks)
                     </span>
                   )}
-                  {returnsData?.timestamp && (
+                  {returnsData?.timestamp && selectedFile && (
                     <span className="text-gray-500 ml-4">
-                      • Updated data as of {new Date(new Date(returnsData.timestamp).getTime() - 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
+                      • Updated data as of {selectedFile}
                     </span>
                   )}
                 </>
@@ -1666,9 +1666,9 @@ export default function ReturnsTab() {
                       (filtered from {returnsData.data.length} total stocks)
                     </span>
                   )}
-                  {returnsData?.timestamp && (
+                  {returnsData?.timestamp && selectedFile && (
                     <span className="text-gray-500 ml-4">
-                      • Updated data as of {new Date(new Date(returnsData.timestamp).getTime() - 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
+                      • Updated data as of {selectedFile}
                     </span>
                   )}
                 </>
